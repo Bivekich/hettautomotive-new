@@ -12,4 +12,12 @@ docker-compose down
 docker-compose up -d --build
 
 echo "Процесс настройки завершен."
-echo "CMS будет доступна по адресу: http://176.53.163.7:8080"
+echo "CMS доступна внутри сервера по адресу: http://localhost:8080"
+echo ""
+echo "Для настройки домена cms.hettautomotive.ru:"
+echo "1. Скопируйте nginx-proxy.conf в /etc/nginx/sites-available/"
+echo "2. Создайте симлинк: ln -s /etc/nginx/sites-available/nginx-proxy.conf /etc/nginx/sites-enabled/"
+echo "3. Проверьте конфигурацию: nginx -t"
+echo "4. Перезапустите Nginx: systemctl restart nginx"
+echo ""
+echo "После этого CMS будет доступна по адресу: https://cms.hettautomotive.ru"
