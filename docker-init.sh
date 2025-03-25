@@ -3,15 +3,13 @@
 echo "Настройка CMS Payload для hettautomotive.ru"
 
 # Создаем необходимые директории
-mkdir -p nginx certbot/conf certbot/www media
+mkdir -p nginx media
 
-# Подготовка файлов конфигурации SSL
-./certbot/ssl-init.sh
+# Останавливаем существующие контейнеры
+docker-compose down
 
 # Запуск контейнеров
 docker-compose up -d --build
 
 echo "Процесс настройки завершен."
-echo "Для полной настройки SSL выполните: docker-compose up certbot"
-echo "После успешного выполнения перезапустите Nginx: docker-compose restart nginx"
-echo "CMS будет доступна по адресу: https://cms.hettautomotive.ru"
+echo "CMS будет доступна по адресу: http://176.53.163.7:8080"
