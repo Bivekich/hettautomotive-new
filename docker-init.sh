@@ -2,6 +2,9 @@
 
 echo "Настройка CMS Payload для hettautomotive.ru"
 
+# Создаем необходимые директории
+mkdir -p nginx certbot/conf certbot/www media
+
 # Подготовка файлов конфигурации SSL
 ./certbot/ssl-init.sh
 
