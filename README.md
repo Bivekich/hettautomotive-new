@@ -2,21 +2,41 @@
 
 This is the CMS backend for the Hett application.
 
-## Running with Docker
+## Деплой на сервер с помощью Docker
 
-The CMS backend can be run using Docker Compose:
+Для развертывания CMS на сервере выполните следующие шаги:
 
-1. Make sure you have Docker and Docker Compose installed
-2. Configure your environment variables in `.env` file
-3. Build and start the containers:
-
+1. Склонируйте репозиторий на сервер:
 ```bash
-docker-compose up -d
+git clone <repository-url>
+cd hettautomotive-cms
 ```
 
-This will start:
-- The CMS backend on http://localhost:3000
-- PostgreSQL database
+2. Настройте подключение к базе данных PostgreSQL в файле `.env`:
+```
+DATABASE_URI=postgres://username:password@your-postgres-host:5432/your-database-name
+PAYLOAD_SECRET=your-secret-key-change-this
+PAYLOAD_PUBLIC_SERVER_URL=https://cms.hettautomotive.ru
+NODE_ENV=production
+NEXT_PUBLIC_SERVER_URL=https://cms.hettautomotive.ru
+```
+
+3. Запустите скрипт инициализации для автоматической настройки и запуска контейнеров:
+```bash
+./docker-init.sh
+```
+
+4. Настройте SSL сертификаты с помощью Certbot:
+```bash
+docker-compose up certbot
+docker-compose restart nginx
+```
+
+После выполнения этих шагов CMS будет доступна по адресу https://cms.hettautomotive.ru
+
+### Требования
+- Docker и Docker Compose
+- Настроенная запись DNS для домена cms.hettautomotive.ru, указывающая на IP-адрес сервера
 
 ## Environment Variables
 
