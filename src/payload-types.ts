@@ -77,6 +77,12 @@ export interface Config {
     'custom-pages': CustomPage;
     settings: Setting;
     'page-descriptions': PageDescription;
+    categories: Category;
+    subcategories: Subcategory;
+    brands: Brand;
+    models: Model;
+    modifications: Modification;
+    catalog: Catalog;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -93,6 +99,12 @@ export interface Config {
     'custom-pages': CustomPagesSelect<false> | CustomPagesSelect<true>;
     settings: SettingsSelect<false> | SettingsSelect<true>;
     'page-descriptions': PageDescriptionsSelect<false> | PageDescriptionsSelect<true>;
+    categories: CategoriesSelect<false> | CategoriesSelect<true>;
+    subcategories: SubcategoriesSelect<false> | SubcategoriesSelect<true>;
+    brands: BrandsSelect<false> | BrandsSelect<true>;
+    models: ModelsSelect<false> | ModelsSelect<true>;
+    modifications: ModificationsSelect<false> | ModificationsSelect<true>;
+    catalog: CatalogSelect<false> | CatalogSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -712,6 +724,273 @@ export interface PageDescription {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "categories".
+ */
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: string;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Category image
+   */
+  image?: (number | null) | Media;
+  /**
+   * Category icon
+   */
+  icon?: (number | null) | Media;
+  /**
+   * Show this category in featured sections
+   */
+  featured?: boolean | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subcategories".
+ */
+export interface Subcategory {
+  id: number;
+  name: string;
+  slug: string;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: string;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  category: number | Category;
+  /**
+   * Subcategory image
+   */
+  image?: (number | null) | Media;
+  /**
+   * Subcategory icon
+   */
+  icon?: (number | null) | Media;
+  /**
+   * Show this subcategory in featured sections
+   */
+  featured?: boolean | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "brands".
+ */
+export interface Brand {
+  id: number;
+  name: string;
+  slug: string;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: string;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Brand logo
+   */
+  logo?: (number | null) | Media;
+  /**
+   * Show this brand in featured sections
+   */
+  featured?: boolean | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "models".
+ */
+export interface Model {
+  id: number;
+  name: string;
+  slug: string;
+  brand: number | Brand;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: string;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  /**
+   * Show this model in featured sections
+   */
+  featured?: boolean | null;
+  /**
+   * Model image
+   */
+  image?: (number | null) | Media;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "modifications".
+ */
+export interface Modification {
+  id: number;
+  name: string;
+  slug: string;
+  model: number | Model;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: string;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  yearStart?: number | null;
+  yearEnd?: number | null;
+  specifications?:
+    | {
+        name: string;
+        value: string;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Modification image
+   */
+  image?: (number | null) | Media;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "catalog".
+ */
+export interface Catalog {
+  id: number;
+  name: string;
+  slug: string;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: string;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  shortDescription?: string | null;
+  brand?: (number | null) | Brand;
+  model?: (number | null) | Model;
+  modification?: (number | null) | Modification;
+  category: number | Category;
+  subcategory?: (number | null) | Subcategory;
+  images?:
+    | {
+        image: number | Media;
+        alt?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  featured?: boolean | null;
+  inStock?: boolean | null;
+  specifications?:
+    | {
+        name: string;
+        value: string;
+        id?: string | null;
+      }[]
+    | null;
+  oem?: string | null;
+  marketplaceLinks?: {
+    ozon?: string | null;
+    wildberries?: string | null;
+    others?:
+      | {
+          name: string;
+          url: string;
+          logo?: (number | null) | Media;
+          id?: string | null;
+        }[]
+      | null;
+  };
+  distributors?:
+    | {
+        name: string;
+        url: string;
+        location?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
@@ -756,6 +1035,30 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'page-descriptions';
         value: number | PageDescription;
+      } | null)
+    | ({
+        relationTo: 'categories';
+        value: number | Category;
+      } | null)
+    | ({
+        relationTo: 'subcategories';
+        value: number | Subcategory;
+      } | null)
+    | ({
+        relationTo: 'brands';
+        value: number | Brand;
+      } | null)
+    | ({
+        relationTo: 'models';
+        value: number | Model;
+      } | null)
+    | ({
+        relationTo: 'modifications';
+        value: number | Modification;
+      } | null)
+    | ({
+        relationTo: 'catalog';
+        value: number | Catalog;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -1136,6 +1439,152 @@ export interface PageDescriptionsSelect<T extends boolean = true> {
         id?: T;
       };
   active?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "categories_select".
+ */
+export interface CategoriesSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  description?: T;
+  image?: T;
+  icon?: T;
+  featured?: T;
+  metaTitle?: T;
+  metaDescription?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "subcategories_select".
+ */
+export interface SubcategoriesSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  description?: T;
+  category?: T;
+  image?: T;
+  icon?: T;
+  featured?: T;
+  metaTitle?: T;
+  metaDescription?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "brands_select".
+ */
+export interface BrandsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  description?: T;
+  logo?: T;
+  featured?: T;
+  metaTitle?: T;
+  metaDescription?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "models_select".
+ */
+export interface ModelsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  brand?: T;
+  description?: T;
+  featured?: T;
+  image?: T;
+  metaTitle?: T;
+  metaDescription?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "modifications_select".
+ */
+export interface ModificationsSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  model?: T;
+  description?: T;
+  yearStart?: T;
+  yearEnd?: T;
+  specifications?:
+    | T
+    | {
+        name?: T;
+        value?: T;
+        id?: T;
+      };
+  image?: T;
+  metaTitle?: T;
+  metaDescription?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "catalog_select".
+ */
+export interface CatalogSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  description?: T;
+  shortDescription?: T;
+  brand?: T;
+  model?: T;
+  modification?: T;
+  category?: T;
+  subcategory?: T;
+  images?:
+    | T
+    | {
+        image?: T;
+        alt?: T;
+        id?: T;
+      };
+  featured?: T;
+  inStock?: T;
+  specifications?:
+    | T
+    | {
+        name?: T;
+        value?: T;
+        id?: T;
+      };
+  oem?: T;
+  marketplaceLinks?:
+    | T
+    | {
+        ozon?: T;
+        wildberries?: T;
+        others?:
+          | T
+          | {
+              name?: T;
+              url?: T;
+              logo?: T;
+              id?: T;
+            };
+      };
+  distributors?:
+    | T
+    | {
+        name?: T;
+        url?: T;
+        location?: T;
+        id?: T;
+      };
+  metaTitle?: T;
+  metaDescription?: T;
   updatedAt?: T;
   createdAt?: T;
 }

@@ -17,6 +17,12 @@ import { Contact } from './collections/Contact'
 import { CustomPages } from './collections/CustomPages'
 import { Settings } from './collections/Settings'
 import { PageDescriptions } from './collections/PageDescriptions'
+import Catalog from './collections/Catalog'
+import Categories from './collections/Categories'
+import Subcategories from './collections/Subcategories'
+import Brands from './collections/Brands'
+import Models from './collections/Models'
+import Modifications from './collections/Modifications'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -28,7 +34,24 @@ export default buildConfig({
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Banners, About, Geography, News, Contact, CustomPages, Settings, PageDescriptions],
+  collections: [
+    Users, 
+    Media, 
+    Banners, 
+    About, 
+    Geography, 
+    News, 
+    Contact, 
+    CustomPages, 
+    Settings, 
+    PageDescriptions,
+    Categories,
+    Subcategories,
+    Brands,
+    Models,
+    Modifications,
+    Catalog
+  ],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
