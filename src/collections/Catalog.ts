@@ -1,4 +1,4 @@
-import { CollectionConfig } from 'payload/types'
+import { CollectionConfig } from 'payload'
 
 const Catalog: CollectionConfig = {
   slug: 'catalog',
@@ -179,7 +179,7 @@ const Catalog: CollectionConfig = {
               type: 'upload',
               relationTo: 'media',
               label: 'Marketplace Logo',
-            }
+            },
           ],
         },
       ],
@@ -227,4 +227,4 @@ const Catalog: CollectionConfig = {
   ],
 }
 
-export default Catalog 
+export default Catalog

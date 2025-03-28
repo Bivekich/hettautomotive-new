@@ -1,4 +1,4 @@
-import { CollectionConfig } from 'payload/types'
+import { CollectionConfig } from 'payload'
 
 const Brands: CollectionConfig = {
   slug: 'brands',
@@ -65,4 +65,4 @@ const Brands: CollectionConfig = {
   ],
 }
 
-export default Brands 
+export default Brands

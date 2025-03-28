@@ -1,4 +1,4 @@
-import { CollectionConfig } from 'payload/types'
+import { CollectionConfig } from 'payload'
 
 const Subcategories: CollectionConfig = {
   slug: 'subcategories',
@@ -83,4 +83,4 @@ const Subcategories: CollectionConfig = {
   ],
 }
 
-export default Subcategories 
+export default Subcategories
