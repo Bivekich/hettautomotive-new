@@ -13,7 +13,8 @@
     "lint": "cross-env NODE_OPTIONS=--no-deprecation next lint",
     "payload": "cross-env NODE_OPTIONS=--no-deprecation payload",
     "start": "cross-env NODE_OPTIONS=--no-deprecation next start",
-    "init:db": "cross-env NODE_OPTIONS=--no-deprecation payload migrate"
+    "init:db": "cross-env NODE_OPTIONS=--no-deprecation payload migrate",
+    "import:products": "node src/imports/directImport.js"
   },
   "dependencies": {
     "@payloadcms/db-postgres": "^3.31.0",
@@ -23,6 +24,8 @@
     "cross-env": "^7.0.3",
     "csv-parse": "^5.6.0",
     "csv-stringify": "^6.5.2",
+    "csvtojson": "^2.0.10",
+    "dotenv": "^16.4.7",
     "formidable": "^3.5.2",
     "graphql": "^16.8.1",
     "next": "15.2.2",
@@ -40,6 +43,7 @@
     "eslint": "^9.16.0",
     "eslint-config-next": "15.2.2",
     "prettier": "^3.4.2",
+    "ts-node": "^10.9.2",
     "typescript": "5.7.3"
   },
   "engines": {

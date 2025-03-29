@@ -1,0 +1,6 @@
+name,slug,description,shortDescription,brand,model,modification,category,subcategory,featured,inStock,oem
+"Test Product 1","test-product-1","<p>This is a test product description</p>","Short description for test product 1","Test Brand","Test Model","Standard","Test Category","Test Subcategory","true","true","ABC123"
+"Test Product 2","test-product-2","<p>Another test product description</p>","Short description for test product 2","Test Brand","Test Model","Premium","Test Category","Test Subcategory","false","true","XYZ456"
+"Fuel Filter XYZ-123","fuel-filter-xyz-123","<p>High quality fuel filter for various vehicle models</p>","Efficient fuel filter for most vehicles","FilterBrand","XYZ Series","Standard","Filters","Fuel Filters","true","true","OEM12345"
+"Oil Filter Premium","oil-filter-premium","<p>Premium oil filter with extended life</p>","Long-lasting premium oil filter","FilterBrand","Premium Series","Extra Capacity","Filters","Oil Filters","true","true","OEM67890"
+"Air Filter Standard","air-filter-standard","<p>Standard air filter for passenger vehicles</p>","Standard air filter","AirCo","Standard Series","","Filters","Air Filters","false","true","OEM54321" 

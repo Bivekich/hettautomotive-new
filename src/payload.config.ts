@@ -33,6 +33,11 @@ export default buildConfig({
     importMap: {
       baseDir: path.resolve(dirname),
     },
+    components: {
+      beforeDashboard: [
+        './app/(payload)/admin/custom-components.tsx'
+      ],
+    },
   },
   collections: [
     Users, 
