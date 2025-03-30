@@ -1,0 +1,46 @@
+.catalog-csv-import {
+  padding: 20px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  background-color: #f9f9f9;
+}
+
+.catalog-csv-import h4 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
+}
+
+.catalog-csv-import .form-field {
+  margin-bottom: 15px;
+}
+
+.catalog-csv-import label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.catalog-csv-import input[type="file"] {
+  display: block;
+  /* Add more specific styling if needed */
+}
+
+.catalog-csv-import .button-group {
+  display: flex;
+  gap: 10px; /* Spacing between buttons */
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+.catalog-csv-import .success-message {
+  color: green;
+  margin-top: 10px;
+}
+
+.catalog-csv-import .error-message {
+  color: red;
+  margin-top: 10px;
+} 

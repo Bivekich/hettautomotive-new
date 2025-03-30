@@ -3,12 +3,18 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { randomUUID } from 'crypto';
+import { getPayloadHMR } from '@payloadcms/next/utilities';
+import configPromise from '@payload-config';
 
-// Dynamic import for the importCSV function to handle ESM/CommonJS compatibility
+// Dynamic import for the importCSV function
 async function getImportFunction() {
   try {
-    // In Next.js API routes, dynamic imports work better than require
-    const module = await import('../../../imports/directImport.js');
+    // Use dynamic import for the .ts file, explicitly including the extension
+    const module = await import('../../../imports/directImport.ts'); // Added .ts extension
+    // Ensure the named export 'importCSV' exists
+    if (!module || typeof module.importCSV !== 'function') {
+      throw new Error('importCSV function not found in the imported module.');
+    }
     return module.importCSV;
   } catch (error) {
     console.error('Failed to import the CSV import function:', error);
@@ -54,9 +60,12 @@ export async function POST(request: NextRequest) {
     // Get the import function
     const importCSV = await getImportFunction();
     
+    // Get the Payload instance
+    const payload = await getPayloadHMR({ config: configPromise });
+    
     // Process in the background
     // We return success immediately to avoid timeout
-    const importPromise = importCSV(filePath)
+    const importPromise = importCSV(filePath, payload)
       .then((result: any) => {
         console.log('Import complete with result:', result);
         // Clean up the temp file
