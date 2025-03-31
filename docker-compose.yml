@@ -1,33 +1,27 @@
-version: '3'
+version: '3.8'
 
 services:
-  payload:
+  app:
     build:
       context: .
       dockerfile: Dockerfile
+    restart: always
     ports:
-      - '3001:3001'
+      - '8080:3000'
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URI=${DATABASE_URI}
+      - PAYLOAD_SECRET=${PAYLOAD_SECRET}
+      - PAYLOAD_PUBLIC_SERVER_URL=${PAYLOAD_PUBLIC_SERVER_URL}
+      - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
+      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
     volumes:
-      - ./media:/app/media
-    env_file:
-      - .env
-    restart: unless-stopped
+      - ./public/media:/app/public/media
+      - ./public/uploads:/app/public/uploads
     networks:
-      - app_network
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - "8080:80"
-      - "8443:443"
-    volumes:
-      - ./nginx:/etc/nginx/conf.d
-    depends_on:
-      - payload
-    restart: unless-stopped
-    networks:
-      - app_network
+      - app-network
 
 networks:
-  app_network:
+  app-network:
     driver: bridge

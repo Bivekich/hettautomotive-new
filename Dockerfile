@@ -1,20 +1,26 @@
-# To use this Dockerfile, you have to set `output: 'standalone'` in your next.config.mjs file.
-# From https://github.com/vercel/next.js/blob/canary/examples/with-docker/Dockerfile
+FROM node:20-alpine AS base
 
-FROM node:18-alpine
+# Установка зависимостей для sharp (обработка изображений)
+RUN apk add --no-cache vips-dev python3 make g++
 
+# Установка рабочей директории
 WORKDIR /app
 
+# Копирование файлов package.json и yarn.lock
 COPY package*.json ./
-RUN npm install --legacy-peer-deps
+COPY .yarnrc ./
 
+# Установка зависимостей
+RUN npm ci
+
+# Копирование исходного кода
 COPY . .
 
+# Генерация типов Payload
+RUN npm run generate:types
+
+# Сборка приложения
 RUN npm run build
 
-ENV NODE_ENV=production
-ENV PORT=3001
-
-EXPOSE 3001
-
-CMD ["npm", "start"]
+# Запуск приложения
+CMD ["npm", "run", "start"]
