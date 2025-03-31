@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url'
 
 import config from '@/payload.config'
 import './styles.css'
+import logo from '../../../public/HettLogo.svg'
 
 export default async function HomePage() {
   const fileURL = `vscode://file/${fileURLToPath(import.meta.url)}`
@@ -14,23 +15,29 @@ export default async function HomePage() {
 
   return (
     <div className="home">
-      <div className="content">
+      <div className="content animate-fadeIn">
         <picture>
-          <source srcSet="https://raw.githubusercontent.com/payloadcms/payload/main/packages/ui/src/assets/payload-favicon.svg" />
+          <source srcSet={logo.src} />
           <Image
-            alt="Payload Logo"
-            height={65}
-            src="https://raw.githubusercontent.com/payloadcms/payload/main/packages/ui/src/assets/payload-favicon.svg"
-            width={65}
+            alt="HETT Logo"
+            height={80}
+            src={logo}
+            width={200}
+            priority
           />
         </picture>
-        <h1>Добро пожаловать на новый сайт.</h1>
+        <h1 className="roboto-condensed-bold">Добро пожаловать в панель управления</h1>
         <div className="links">
-          <a className="admin" href={adminRoute} rel="noopener noreferrer" target="_blank">
+          <a 
+            className="admin roboto-condensed-medium" 
+            href={adminRoute} 
+            rel="noopener noreferrer" 
+            target="_blank"
+          >
             Панель администратора
           </a>
           <a
-            className="docs"
+            className="docs roboto-condensed-medium"
             href="https://payloadcms.com/docs"
             rel="noopener noreferrer"
             target="_blank"
@@ -38,12 +45,6 @@ export default async function HomePage() {
             Документация
           </a>
         </div>
-      </div>
-      <div className="footer">
-        <p>Update this page by editing</p>
-        <a className="codeLink" href={fileURL}>
-          <code>app/(frontend)/page.tsx</code>
-        </a>
       </div>
     </div>
   )

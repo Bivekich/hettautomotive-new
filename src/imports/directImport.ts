@@ -3,7 +3,7 @@ import csv from 'csvtojson';
 import type { Payload } from 'payload';
 import fs from 'fs';
 // Assuming your generated types are here
-import type { Catalog, Category, Subcategory, Brand, Model, Modification, Media } from '../../payload-types';
+import type { Catalog, Category, Subcategory, Brand, Model, Modification, Media } from '../payload-types';
 
 // Function to slugify text
 const slugify = (text: string): string => {
@@ -67,6 +67,62 @@ interface CsvRow {
   images?: string; // Expecting comma-separated filenames or alt texts
 }
 
+// Helper function to parse specifications
+function parseSpecifications(specsString: string): { name: string; value: string }[] {
+  if (!specsString) return [];
+  return specsString.split(',').map(spec => {
+    const [name, value] = spec.split(':');
+    return { name, value };
+  });
+}
+
+// Helper function to ensure URL has https:// prefix
+function ensureHttps(url: string): string {
+  if (!url) return '';
+  url = url.trim();
+  if (!url.startsWith('http://') && !url.startsWith('https://')) {
+    return `https://${url}`;
+  }
+  return url;
+}
+
+// Helper function to parse marketplace links
+function parseMarketplaceLinks(linksString: string): { name: string; url: string; logo?: string | number | null }[] {
+  if (!linksString) return [];
+  const links = linksString.split(',').map(link => {
+    const parts = link.split(':');
+    if (parts.length < 2) {
+      console.warn(`Invalid marketplace link format: ${link}`);
+      return null;
+    }
+    const result: { name: string; url: string; logo?: string | number | null } = {
+      name: parts[0].trim(),
+      url: ensureHttps(parts[1].trim()),
+    };
+    if (parts[2]) {
+      result.logo = parts[2].trim();
+    }
+    return result;
+  });
+  return links.filter((link): link is { name: string; url: string; logo?: string | number | null } => link !== null);
+}
+
+// Helper function to parse distributors
+function parseDistributors(distributorsString: string): { name: string; url: string; location: string | null }[] {
+  if (!distributorsString) return [];
+  return distributorsString.split(',').map(dist => {
+    const parts = dist.split(':');
+    if (parts.length < 2) {
+      console.warn(`Invalid distributor format: ${dist}`);
+      return null;
+    }
+    return { 
+      name: parts[0].trim(),
+      url: ensureHttps(parts[1].trim()),
+      location: parts[2] ? parts[2].trim() : null
+    };
+  }).filter((dist): dist is { name: string; url: string; location: string | null } => dist !== null);
+}
 
 // Main import function
 export async function importCSV(
@@ -85,7 +141,8 @@ export async function importCSV(
 
     console.log(`Starting import from: ${filePath}`);
 
-    productsData = await csv().fromFile(filePath);
+    // Specify the delimiter for the CSV parser
+    productsData = await csv({ delimiter: ';' }).fromFile(filePath);
     console.log(`Found ${productsData.length} products in CSV.`);
 
     for (const source of productsData) {
@@ -101,85 +158,179 @@ export async function importCSV(
       try {
         const slug = source.slug || slugify(source.name);
 
+        // Helper to find media by filename or alt text
+        const findMedia = async (identifier: string): Promise<string | number | undefined> => {
+           if (!identifier) return undefined;
+           try {
+              // First try to find by filename
+              let media = await payload.find({
+                 collection: 'media',
+                 where: { filename: { equals: identifier } },
+                 limit: 1,
+                 depth: 0,
+              });
+              if (media.docs.length > 0) {
+                 console.log(`Found image by filename: ${identifier}`);
+                 return media.docs[0].id;
+              }
+
+              // If not found by filename, try to find by alt text
+              media = await payload.find({
+                 collection: 'media',
+                 where: { alt: { equals: identifier } },
+                 limit: 1,
+                 depth: 0,
+              });
+              if (media.docs.length > 0) {
+                 console.log(`Found image by alt text: ${identifier}`);
+                 return media.docs[0].id;
+              }
+
+              // If still not found, try to find by name (without extension)
+              const nameWithoutExt = identifier.split('.')[0];
+              media = await payload.find({
+                 collection: 'media',
+                 where: { alt: { equals: nameWithoutExt } },
+                 limit: 1,
+                 depth: 0,
+              });
+              if (media.docs.length > 0) {
+                 console.log(`Found image by name: ${nameWithoutExt}`);
+                 return media.docs[0].id;
+              }
+
+              console.warn(`Image "${identifier}" not found in media collection.`);
+              return undefined;
+           } catch (err) {
+              console.error(`Error searching for media "${identifier}":`, err);
+              return undefined;
+           }
+        };
+
         // Prepare data structure matching Catalog collection type
-        productData = {
+        const productData: Pick<Catalog, 'name' | 'slug'> & Partial<Omit<Catalog, 'id' | 'createdAt' | 'updatedAt' | 'name' | 'slug'>> = {
           name: source.name,
           slug: slug,
-          description: source.description || undefined,
+          description: source.description ? {
+            root: {
+              type: 'root',
+              children: [{
+                type: 'paragraph',
+                children: [{
+                  type: 'text',
+                  text: source.description,
+                  version: 1
+                }],
+                version: 1
+              }],
+              direction: 'ltr',
+              format: '',
+              indent: 0,
+              version: 1
+            }
+          } : undefined,
           shortDescription: source.shortDescription || undefined,
           oem: source.oem || undefined,
           featured: toBoolean(source.featured),
-          inStock: toBoolean(source.inStock ?? 'true'), // Default inStock to true if not provided
+          inStock: toBoolean(source.inStock ?? 'true'),
           metaTitle: source.metaTitle || undefined,
           metaDescription: source.metaDescription || undefined,
           specifications: [], // Initialize empty
           marketplaceLinks: { // Initialize structure
-            ozon: undefined,
-            wildberries: undefined,
+            ozon: source.marketplaceLinks_ozon || undefined,
+            wildberries: source.marketplaceLinks_wildberries || undefined,
             others: [],
           },
           distributors: [], // Initialize empty
-          // Relationship fields will be populated below
         };
 
+        // Parse specifications
+        let specifications: { name: string; value: string }[] = [];
+        try {
+          specifications = parseSpecifications(source.specifications || '');
+        } catch (error) {
+          console.error(`Failed to parse specifications for product ${source.name}:`, error);
+        }
+
         // Handle specifications (array of name/value pairs)
-        if (source.specifications) {
-           const specData = safeParse(source.specifications, []);
-           if (Array.isArray(specData)) {
-              // Basic validation for spec items
-              productData.specifications = specData.filter(item => item && typeof item === 'object' && item.name && item.value).map(item => ({ id: undefined, name: item.name, value: item.value }));
-           } else {
-              console.warn(`Invalid format for specifications for "${source.name}". Expected JSON array.`);
-           }
+        if (specifications.length > 0) {
+           productData.specifications = specifications.filter(item => item && typeof item === 'object' && item.name && item.value).map(item => ({ id: undefined, name: item.name, value: item.value }));
+        } else {
+           console.warn(`Invalid format for specifications for "${source.name}". Expected JSON array.`);
+        }
+
+        // Parse marketplace links
+        let marketplaceLinks_others: { name: string; url: string; logo?: string | number | null }[] = [];
+        try {
+          marketplaceLinks_others = parseMarketplaceLinks(source.marketplaceLinks_others || '');
+        } catch (error) {
+          console.error(`Failed to parse marketplace links for product ${source.name}:`, error);
         }
 
         // Handle marketplace links
-        if (productData.marketplaceLinks) { // Check if marketplaceLinks exists
+        if (productData.marketplaceLinks) {
           productData.marketplaceLinks.ozon = source.marketplaceLinks_ozon || undefined;
           productData.marketplaceLinks.wildberries = source.marketplaceLinks_wildberries || undefined;
-          if (source.marketplaceLinks_others) {
-            const othersData = safeParse(source.marketplaceLinks_others, []);
-            if (Array.isArray(othersData)) {
-               // Filter/map to ensure required fields are present if any
-               productData.marketplaceLinks.others = othersData
-                  .filter(item => item && typeof item === 'object' && item.name && item.url) // Assuming name and url are key
-                  .map(item => ({
-                     id: undefined, // Ensure ID is not carried over unless explicitly handled
-                     name: item.name,
-                     url: item.url,
-                     logo: item.logo || undefined // Handle logo - assume it's a relation ID (string/number) or undefined
-                  }));
-            } else {
-               console.warn(`Invalid format for marketplaceLinks_others for "${source.name}". Expected JSON array.`);
+          
+          if (marketplaceLinks_others.length > 0) {
+            console.log(`Processing ${marketplaceLinks_others.length} other marketplace links for ${source.name}`);
+            const processedLinks = await Promise.all(
+              marketplaceLinks_others.map(async (item) => {
+                console.log(`Processing marketplace link: ${item.name} - ${item.url}`);
+                if (item.logo) {
+                  const media = await payload.find({
+                    collection: 'media',
+                    where: { filename: { equals: item.logo } },
+                    limit: 1,
+                    depth: 0,
+                  });
+                  
+                  if (media.docs.length > 0) {
+                    console.log(`Found logo for ${item.name}: ${media.docs[0].id}`);
+                    return {
+                      id: undefined,
+                      name: item.name,
+                      url: item.url,
+                      logo: media.docs[0].id
+                    };
+                  }
+                }
+                return {
+                  id: undefined,
+                  name: item.name,
+                  url: item.url
+                };
+              })
+            );
+
+            // Only set others if we have processed links
+            if (processedLinks.length > 0) {
+              console.log(`Setting ${processedLinks.length} marketplace links for ${source.name}`);
+              productData.marketplaceLinks.others = processedLinks;
             }
           }
-           // Ensure 'others' is undefined if empty and field definition allows it
-          if (!productData.marketplaceLinks.others?.length) {
-             productData.marketplaceLinks.others = undefined;
-          }
         }
 
-
-        // Handle distributors array
-        if (source.distributors) {
-          const distributorsData = safeParse(source.distributors, []);
-          if (Array.isArray(distributorsData)) {
-             // Filter/map to ensure required fields are present if any
-             productData.distributors = distributorsData
-                .filter(item => item && typeof item === 'object' && item.name) // Assuming name is key
-                .map(item => ({
-                  id: undefined, // Ensure ID is not carried over
-                   name: item.name,
-                   url: item.url || undefined,
-                   location: item.location || undefined
-                }));
-          } else {
-             console.warn(`Invalid format for distributors for "${source.name}". Expected JSON array.`);
-          }
+        // Parse distributors
+        let distributors: { name: string; url: string; location: string | null }[] = [];
+        try {
+          distributors = parseDistributors(source.distributors || '');
+        } catch (error) {
+          console.error(`Failed to parse distributors for product ${source.name}:`, error);
         }
-         // Ensure 'distributors' is undefined if empty and field definition allows it
-        if (!productData.distributors?.length) {
-           productData.distributors = undefined;
+
+        // Handle distributors
+        if (distributors.length > 0) {
+          console.log(`Processing ${distributors.length} distributors for ${source.name}`);
+          productData.distributors = distributors.map(item => {
+            console.log(`Processing distributor: ${item.name} - ${item.url} - ${item.location}`);
+            return {
+              id: undefined,
+              name: item.name,
+              url: item.url,
+              location: item.location
+            };
+          });
         }
 
         // --- Handle Relationships ---
@@ -189,7 +340,7 @@ export async function importCSV(
 
         // Category (required)
         try {
-          const categories = await payload.find<Category>({
+          const categories = await payload.find({
             collection: 'categories',
             where: { name: { equals: source.category } },
             limit: 1,
@@ -199,7 +350,7 @@ export async function importCSV(
             categoryId = categories.docs[0].id;
           } else {
             console.warn(`Category "${source.category}" not found. Creating it.`);
-            const newCategory = await payload.create<Category>({
+            const newCategory = await payload.create({
               collection: 'categories',
               data: { name: source.category, slug: slugify(source.category) },
             });
@@ -215,7 +366,7 @@ export async function importCSV(
         // Subcategory (optional)
         if (source.subcategory) {
           try {
-            const subcategories = await payload.find<Subcategory>({
+            const subcategories = await payload.find({
               collection: 'subcategories',
               where: { name: { equals: source.subcategory } },
               limit: 1,
@@ -227,7 +378,7 @@ export async function importCSV(
               console.warn(`Subcategory "${source.subcategory}" not found. Creating it.`);
               // Ensure categoryId is valid before creating subcategory
                if (categoryId) {
-                 const newSubcategory = await payload.create<Subcategory>({
+                 const newSubcategory = await payload.create({
                    collection: 'subcategories',
                    data: { name: source.subcategory, slug: slugify(source.subcategory), category: categoryId }, // Requires category
                  });
@@ -244,7 +395,7 @@ export async function importCSV(
         // Brand (optional)
         if (source.brand) {
           try {
-            const brands = await payload.find<Brand>({
+            const brands = await payload.find({
               collection: 'brands',
               where: { name: { equals: source.brand } },
               limit: 1,
@@ -254,7 +405,7 @@ export async function importCSV(
               brandId = brands.docs[0].id;
             } else {
               console.warn(`Brand "${source.brand}" not found. Creating it.`);
-              const newBrand = await payload.create<Brand>({
+              const newBrand = await payload.create({
                 collection: 'brands',
                 data: { name: source.brand, slug: slugify(source.brand) },
               });
@@ -269,7 +420,7 @@ export async function importCSV(
         // Model (optional)
         if (source.model) {
           try {
-            const models = await payload.find<Model>({
+            const models = await payload.find({
               collection: 'models',
               where: { name: { equals: source.model } },
               limit: 1,
@@ -280,9 +431,18 @@ export async function importCSV(
             } else {
               console.warn(`Model "${source.model}" not found. Creating it.`);
               // Ensure brandId is potentially available if needed for the model
-              const newModel = await payload.create<Model>({
+              const modelData: Pick<Model, 'name' | 'slug'> & { brand?: string | number } = {
+                name: source.model,
+                slug: slugify(source.model),
+              };
+              if (brandId) {
+                // Assign the ID directly, ensuring it's string or number
+                modelData.brand = brandId as string | number;
+              }
+              const newModel = await payload.create({
                 collection: 'models',
-                data: { name: source.model, slug: slugify(source.model), brand: brandId }, // Link to brand if found
+                // @ts-ignore - Suppress persistent type error for create data
+                data: modelData as Partial<Model>,
               });
               modelId = newModel.id;
             }
@@ -295,7 +455,7 @@ export async function importCSV(
         // Modification (optional)
         if (source.modification) {
           try {
-            const modifications = await payload.find<Modification>({
+            const modifications = await payload.find({
               collection: 'modifications',
               where: { name: { equals: source.modification } },
               limit: 1,
@@ -306,9 +466,18 @@ export async function importCSV(
             } else {
               console.warn(`Modification "${source.modification}" not found. Creating it.`);
                // Ensure modelId is potentially available if needed
-              const newModification = await payload.create<Modification>({
+               const modificationData: Pick<Modification, 'name' | 'slug'> & { model?: string | number } = {
+                 name: source.modification,
+                 slug: slugify(source.modification),
+               };
+               if (modelId) {
+                 // Assign the ID directly, ensuring it's string or number
+                 modificationData.model = modelId as string | number;
+               }
+              const newModification = await payload.create({
                 collection: 'modifications',
-                data: { name: source.modification, slug: slugify(source.modification), model: modelId }, // Link to model if found
+                 // @ts-ignore - Suppress persistent type error for create data
+                data: modificationData as Partial<Modification>,
               });
               productData.modification = newModification.id;
             }
@@ -318,69 +487,30 @@ export async function importCSV(
         }
 
         // --- Handle Images ---
-        // Helper to find media by filename or alt text
-        const findMedia = async (identifier: string): Promise<string | number | undefined> => {
-           if (!identifier) return undefined;
-           try {
-              // Prioritize filename match
-              let media = await payload.find<Media>({
-                 collection: 'media',
-                 where: { filename: { equals: identifier } },
-                 limit: 1,
-                 depth: 0, // No need for depth here
-              });
-              if (media.docs.length > 0) {
-                 console.log(`Found image by filename: ${identifier}`);
-                 return media.docs[0].id;
-              }
-
-              // Fallback to alt text match
-              media = await payload.find<Media>({
-                 collection: 'media',
-                 where: { alt: { equals: identifier } },
-                 limit: 1,
-                  depth: 0,
-              });
-              if (media.docs.length > 0) {
-                 console.log(`Found image by alt text: ${identifier}`);
-                 return media.docs[0].id;
-              }
-
-              console.warn(`Image "${identifier}" not found in media collection.`);
-              return undefined;
-           } catch (err) {
-              console.error(`Error searching for media "${identifier}":`, err);
-              return undefined;
-           }
-        };
-
-        // Main image
-        if (source.image) {
-           productData.image = await findMedia(source.image.trim());
-        }
-
         // Additional images (comma-separated)
         if (source.images) {
           const imageIdentifiers = source.images.split(',').map(img => img.trim()).filter(img => img);
-          const imageIds: (string | number)[] = [];
+          const imageRelationArray: { image: string | number }[] = []; // Initialize correct structure
           for (const identifier of imageIdentifiers) {
              const foundId = await findMedia(identifier);
              if (foundId) {
-                // Avoid duplicates
-                if (!imageIds.includes(foundId)) {
-                  imageIds.push(foundId);
+                // Avoid duplicates - check if an object with this ID already exists
+                if (!imageRelationArray.some(item => item.image === foundId)) {
+                  // Cast foundId to string | number for the relation
+                  imageRelationArray.push({ image: foundId as string | number });
                 }
              }
           }
-           if (imageIds.length > 0) {
-             productData.images = imageIds;
+           if (imageRelationArray.length > 0) {
+             // Assert the type to match the expected Array Block structure for the operation
+             productData.images = imageRelationArray as NonNullable<Catalog['images']>;
            }
         }
 
 
         // --- Upsert Logic ---
         // Check if product with the same slug already exists
-        const existingProducts = await payload.find<Catalog>({
+        const existingProducts = await payload.find({
           collection: 'catalog',
           where: { slug: { equals: slug } },
           limit: 1,
@@ -393,8 +523,9 @@ export async function importCSV(
 
            // Handle potentially undefined nested structure
            if (cleaned.marketplaceLinks) {
-             if (cleaned.marketplaceLinks.others === undefined || (Array.isArray(cleaned.marketplaceLinks.others) && cleaned.marketplaceLinks.others.length === 0)) {
-               cleaned.marketplaceLinks.others = undefined;
+             // Don't remove empty others array
+             if (cleaned.marketplaceLinks.others === undefined) {
+               cleaned.marketplaceLinks.others = [];
              }
              // If marketplaceLinks only contains undefined values after cleaning, remove the parent object
              if (Object.values(cleaned.marketplaceLinks).every(v => v === undefined)) {
@@ -430,7 +561,7 @@ export async function importCSV(
           console.log(`Updating existing product: ${source.name} (ID: ${existingId})`);
           const updateData = cleanData(productData);
 
-          await payload.update<Catalog>({
+          await payload.update({
             collection: 'catalog',
             id: existingId,
             data: updateData, // Pass the cleaned, structured data
@@ -439,9 +570,10 @@ export async function importCSV(
           console.log(`Creating new product: ${source.name}`);
           const createData = cleanData(productData);
 
-          await payload.create<Catalog>({
+          // Assert the data type for create, ensuring required fields are present
+          await payload.create({
             collection: 'catalog',
-            data: createData, // Pass the cleaned, structured data
+            data: createData as Pick<Catalog, 'name' | 'slug' | 'category'> & typeof createData,
           });
         }
 

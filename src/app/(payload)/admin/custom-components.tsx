@@ -83,26 +83,6 @@ export const CSVImport = () => {
     <div style={{ margin: '2rem 0' }}>
       <h2>Product Catalog Tools</h2>
       
-      {/* Download section */}
-      <div style={{ 
-        marginBottom: '2rem', 
-        padding: '1.5rem',
-      }}>
-        <h3>Download Current Catalog</h3>
-        <p>Export all products from the current catalog as a CSV file.</p>
-        
-        <button 
-          onClick={handleDownload}
-          disabled={downloading}
-          style={{
-            padding: '0.5rem 1rem',
-            cursor: downloading ? 'not-allowed' : 'pointer'
-          }}
-        >
-          {downloading ? 'Downloading...' : 'Download Catalog as CSV'}
-        </button>
-      </div>
-      
       {/* Upload section */}
       <div style={{ 
         padding: '1.5rem', 
@@ -112,13 +92,21 @@ export const CSVImport = () => {
         <p>
           Required columns: name, category
           {' '}
+          <a
+            href="/api/download-sample-csv"
+            style={{ color: '#2196F3', textDecoration: 'underline', marginRight: '1rem' }}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Export Catalog
+          </a>
           <a 
-            href="/api/download-sample-csv" 
+            href="/api/download-template-csv" 
             style={{ color: '#2196F3', textDecoration: 'underline' }}
             target="_blank" 
             rel="noopener noreferrer"
           >
-            Download Sample CSV
+            Download Template
           </a>
         </p>
         <p>Basic optional columns: slug, description, shortDescription, oem, featured, inStock, subcategory, brand, model, modification</p>
