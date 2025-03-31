@@ -1,97 +1,98 @@
-'use client';
+'use client'
 
-import React, { useState } from 'react';
+import React, { useState } from 'react'
 
 // Simple CSV Import component for the Payload CMS admin
 export const CSVImport = () => {
-  const [file, setFile] = useState<File | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [downloading, setDownloading] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [file, setFile] = useState<File | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [_downloading, setDownloading] = useState(false)
+  const [showAdvanced, setShowAdvanced] = useState(false)
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
-      setMessage(null);
-      setError(null);
+      setFile(e.target.files[0])
+      setMessage(null)
+      setError(null)
     }
-  };
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault()
     if (!file) {
-      setError('Please select a CSV file to upload');
-      return;
+      setError('Please select a CSV file to upload')
+      return
     }
 
-    setUploading(true);
-    setMessage('Uploading file and starting import...');
-    setError(null);
+    setUploading(true)
+    setMessage('Uploading file and starting import...')
+    setError(null)
 
     try {
-      const formData = new FormData();
-      formData.append('file', file); // This matches the field name in the API
+      const formData = new FormData()
+      formData.append('file', file) // This matches the field name in the API
 
       const response = await fetch('/api/import-products', {
         method: 'POST',
         body: formData,
-      });
+      })
 
-      const result = await response.json();
+      const result = await response.json()
 
       if (result.success) {
-        setMessage(result.message || 'Import successful!');
-        setFile(null);
+        setMessage(result.message || 'Import successful!')
+        setFile(null)
         // Reset the file input
-        const fileInput = document.getElementById('csv-file') as HTMLInputElement;
+        const fileInput = document.getElementById('csv-file') as HTMLInputElement
         if (fileInput) {
-          fileInput.value = '';
+          fileInput.value = ''
         }
       } else {
-        setError(result.message || 'Import failed.');
+        setError(result.message || 'Import failed.')
       }
     } catch (err) {
-      setError('Error uploading file: ' + (err instanceof Error ? err.message : String(err)));
+      setError('Error uploading file: ' + (err instanceof Error ? err.message : String(err)))
     } finally {
-      setUploading(false);
+      setUploading(false)
     }
-  };
+  }
 
-  const handleDownload = async () => {
-    setDownloading(true);
+  const _handleDownload = async () => {
+    setDownloading(true)
     try {
       // Use a direct link to download the file
-      window.location.href = '/api/download-catalog';
-      
+      window.location.href = '/api/download-catalog'
+
       // Set a timeout to reset the downloading state after a short delay
       setTimeout(() => {
-        setDownloading(false);
-      }, 2000);
+        setDownloading(false)
+      }, 2000)
     } catch (err) {
-      setError('Error downloading catalog: ' + (err instanceof Error ? err.message : String(err)));
-      setDownloading(false);
+      setError('Error downloading catalog: ' + (err instanceof Error ? err.message : String(err)))
+      setDownloading(false)
     }
-  };
+  }
 
   const toggleAdvanced = () => {
-    setShowAdvanced(!showAdvanced);
-  };
+    setShowAdvanced(!showAdvanced)
+  }
 
   return (
     <div style={{ margin: '2rem 0' }}>
       <h2>Инструменты каталога товаров</h2>
-      
+
       {/* Upload section */}
-      <div style={{ 
-        padding: '1.5rem', 
-      }}>
+      <div
+        style={{
+          padding: '1.5rem',
+        }}
+      >
         <h3>Импорт товаров из CSV</h3>
         <p>Загрузите CSV файл для импорта товаров в каталог.</p>
         <p>
-          Обязательные поля: название, категория
-          {' '}
+          Обязательные поля: название, категория{' '}
           <a
             href="/api/download-sample-csv"
             style={{ color: '#2196F3', textDecoration: 'underline', marginRight: '1rem' }}
@@ -100,16 +101,16 @@ export const CSVImport = () => {
           >
             Экспорт каталога
           </a>
-          <a 
-            href="/api/download-template-csv" 
+          <a
+            href="/api/download-template-csv"
             style={{ color: '#2196F3', textDecoration: 'underline' }}
-            target="_blank" 
+            target="_blank"
             rel="noopener noreferrer"
           >
             Скачать шаблон
           </a>
         </p>
-      
+
         {/* Advanced fields description - togglable */}
         <div style={{ marginTop: '1rem' }}>
           <button
@@ -123,55 +124,75 @@ export const CSVImport = () => {
               textDecoration: 'underline',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
+              gap: '0.5rem',
             }}
           >
             {showAdvanced ? 'Скрыть дополнительные поля' : 'Показать дополнительные поля'}
             <span style={{ transform: showAdvanced ? 'rotate(180deg)' : 'none' }}>▼</span>
           </button>
-          
+
           {showAdvanced && (
-            <div style={{ marginTop: '1rem', padding: '1rem'}}>
+            <div style={{ marginTop: '1rem', padding: '1rem' }}>
               <p>Дополнительные поля:</p>
               <ul style={{ margin: '0.5rem 0 0 1.5rem' }}>
                 <li>image - основное изображение (имя файла)</li>
                 <li>images - дополнительные изображения (имена файлов через запятую)</li>
                 <li>metaTitle - мета-заголовок</li>
                 <li>metaDescription - мета-описание</li>
-                <li>specifications - характеристики (формат: "название:значение, название:значение")</li>
+                <li>
+                  specifications - характеристики (формат: &quot;название:значение,
+                  название:значение&quot;)
+                </li>
                 <li>marketplaceLinks_ozon - ссылка на Ozon</li>
                 <li>marketplaceLinks_wildberries - ссылка на Wildberries</li>
-                <li>marketplaceLinks_others - другие маркетплейсы (формат: "название:ссылка:логотип, название:ссылка:логотип")</li>
-                <li>distributors - дистрибьюторы (формат: "название:ссылка:местоположение, название:ссылка:местоположение")</li>
+                <li>
+                  marketplaceLinks_others - другие маркетплейсы (формат:
+                  &quot;название:ссылка:логотип, название:ссылка:логотип&quot;)
+                </li>
+                <li>
+                  distributors - дистрибьюторы (формат: &quot;название:ссылка:местоположение,
+                  название:ссылка:местоположение&quot;)
+                </li>
               </ul>
               <p style={{ marginTop: '1rem', color: 'red' }}>
-                Примечание: Все URL НЕ ДОЛЖНЫ начинаться с https://. https:// будет добавлено автоматически.
+                Примечание: Все URL НЕ ДОЛЖНЫ начинаться с https://. https:// будет добавлено
+                автоматически.
               </p>
             </div>
           )}
         </div>
-        
+
         {/* Image fields description */}
-        <div style={{ 
-          marginTop: '1rem', 
-          padding: '1rem', 
-        }}>
+        <div
+          style={{
+            marginTop: '1rem',
+            padding: '1rem',
+          }}
+        >
           <h4 style={{ margin: '0 0 0.5rem 0' }}>Поддержка изображений</h4>
           <p style={{ margin: '0 0 0.5rem 0' }}>
-            Укажите имена файлов изображений в CSV для связывания загруженных медиафайлов с товарами:
+            Укажите имена файлов изображений в CSV для связывания загруженных медиафайлов с
+            товарами:
           </p>
           <ul style={{ margin: '0 0 0.5rem 0' }}>
-            <li><strong>image</strong>: Основное изображение товара (один файл, например, "product.jpg")</li>
-            <li><strong>images</strong>: Дополнительные изображения товара (список через запятую, например, "image1.jpg, image2.jpg")</li>
+            <li>
+              <strong>image</strong>: Основное изображение товара (один файл, например,
+              &quot;product.jpg&quot;)
+            </li>
+            <li>
+              <strong>images</strong>: Дополнительные изображения товара (список через запятую,
+              например, &quot;image1.jpg, image2.jpg&quot;)
+            </li>
           </ul>
           <p style={{ margin: '0', fontSize: '1rem', color: 'red' }}>
-            Примечание: Изображения должны быть предварительно загружены в коллекцию Media с соответствующими именами файлов.
+            Примечание: Изображения должны быть предварительно загружены в коллекцию Media с
+            соответствующими именами файлов.
           </p>
         </div>
-        
+
         <form onSubmit={handleSubmit} style={{ marginTop: '1rem' }}>
           <div style={{ marginBottom: '1rem' }}>
-            <input 
+            <input
               type="file"
               id="csv-file"
               accept=".csv"
@@ -180,9 +201,9 @@ export const CSVImport = () => {
               style={{ padding: '0.5rem 0' }}
             />
           </div>
-          
-          <button 
-            type="submit" 
+
+          <button
+            type="submit"
             disabled={!file || uploading}
             style={{
               padding: '0.5rem 1rem',
@@ -190,50 +211,50 @@ export const CSVImport = () => {
               color: 'white',
               border: 'none',
               borderRadius: '4px',
-              cursor: !file || uploading ? 'not-allowed' : 'pointer'
+              cursor: !file || uploading ? 'not-allowed' : 'pointer',
             }}
           >
             {uploading ? 'Processing...' : 'Upload and Import'}
           </button>
-          
+
           {message && (
-            <div style={{ 
-              marginTop: '1rem', 
-              padding: '0.75rem', 
-              backgroundColor: '#e6f7e6', 
-              borderRadius: '4px',
-              color: '#2e7d32'
-            }}>
+            <div
+              style={{
+                marginTop: '1rem',
+                padding: '0.75rem',
+                backgroundColor: '#e6f7e6',
+                borderRadius: '4px',
+                color: '#2e7d32',
+              }}
+            >
               {message}
             </div>
           )}
-          
+
           {error && (
-            <div style={{ 
-              marginTop: '1rem', 
-              padding: '0.75rem', 
-              backgroundColor: '#ffebee', 
-              borderRadius: '4px',
-              color: '#c62828'
-            }}>
+            <div
+              style={{
+                marginTop: '1rem',
+                padding: '0.75rem',
+                backgroundColor: '#ffebee',
+                borderRadius: '4px',
+                color: '#c62828',
+              }}
+            >
               {error}
             </div>
           )}
         </form>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // Simple CustomNavLinks component that can be used in the Payload CMS admin
 export const CustomNavLinks: React.FC = () => {
-  return (
-    <div className="custom-nav-links">
-      {/* Add your custom navigation links here */}
-    </div>
-  );
-};
+  return <div className="custom-nav-links">{/* Add your custom navigation links here */}</div>
+}
 
 // Export components individually for Payload to use
 // Don't use a default export with an object
-export { CSVImport as default }; 
+export { CSVImport as default }
