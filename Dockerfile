@@ -11,7 +11,7 @@ COPY package*.json ./
 COPY .yarnrc ./
 
 # Установка зависимостей
-RUN npm ci
+RUN npm install --legacy-peer-deps
 
 # Копирование исходного кода
 COPY . .
