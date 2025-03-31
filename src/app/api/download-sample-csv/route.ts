@@ -52,19 +52,17 @@ export async function GET() {
 
     // Define CSV Headers (should match the columns expected by your import script)
     const headers = [
-      'name', 'slug', 'category', 'subcategory', 'brand', 'model', 'modification',
-      'description', 'shortDescription', 'oem', 'featured', 'inStock', 'image',
-      'images', 'metaTitle', 'metaDescription', 'specifications', 'marketplaceLinks_ozon',
-      'marketplaceLinks_wildberries', 'marketplaceLinks_others', 'distributors'
+      'name', 'category', 'slug', 'description', 'shortDescription', 'oem', 'featured', 'inStock',
+      'subcategory', 'brand', 'model', 'modification', 'image', 'images', 'metaTitle', 'metaDescription',
+      'specifications', 'marketplaceLinks_ozon', 'marketplaceLinks_wildberries', 'marketplaceLinks_others', 'distributors'
     ];
 
     const csvRows: string[] = [];
-    // Add header row
-    csvRows.push(headers.join(','));
+    // Add header row with semicolon delimiter
+    csvRows.push(headers.join(';'));
 
     // Process each catalog item
     for (const itemUntyped of allCatalogItems.docs) {
-      // Cast the item to Catalog to satisfy TypeScript, assuming depth populated the fields
       const item = itemUntyped as Catalog;
       const row: any[] = [];
 
@@ -83,76 +81,73 @@ export async function GET() {
       const getImageIdentifier = (media: Media | string | number | null | undefined): string => {
          if (!media) return '';
          if (typeof media === 'object' && media !== null) {
-           return media.filename || media.alt || ''; // Prioritize filename
+           return media.filename || media.alt || '';
          }
-         // If it's just an ID, we can't get the filename without another query, return empty
-         return ''; // Or potentially return the ID if the importer can handle it
+         return '';
       };
       
-      // Helper to format array fields (like specifications, others, distributors)
-      const formatArrayField = (arr: any[] | null | undefined) => {
-        if (!Array.isArray(arr) || arr.length === 0) return '';
-        // Remove potential 'id' fields added by Payload before stringifying
-        const cleanedArr = arr.map(el => {
-          if (el && typeof el === 'object') {
-            const { id, ...rest } = el;
-            return rest;
-          }
-          return el;
-        });
-        return JSON.stringify(cleanedArr).replace(/'/g, '"'); // Use double quotes for JSON
+      // Helper to format specifications for CSV
+      const formatSpecifications = (specs: any[] | null | undefined): string => {
+        if (!Array.isArray(specs) || specs.length === 0) return '';
+        return specs.map(spec => `${spec.name}:${spec.value}`).join(',');
+      };
+
+      // Helper to format marketplace links for CSV
+      const formatMarketplaceLinks = (links: any[] | null | undefined): string => {
+        if (!Array.isArray(links) || links.length === 0) return '';
+        return links.map(link => {
+          const logo = link.logo ? getImageIdentifier(link.logo) : '';
+          return `${link.name}:${link.url}${logo ? `:${logo}` : ''}`;
+        }).join(',');
+      };
+
+      // Helper to format distributors for CSV
+      const formatDistributors = (distributors: any[] | null | undefined): string => {
+        if (!Array.isArray(distributors) || distributors.length === 0) return '';
+        return distributors.map(dist => `${dist.name}:${dist.url}:${dist.location || ''}`).join(',');
       };
 
       row.push(csvStringify(item.name));
+      row.push(csvStringify(getProp(item.category, 'name')));
       row.push(csvStringify(item.slug));
-      row.push(csvStringify(getProp(item.category, 'name'))); // Get name from related category
-      row.push(csvStringify(getProp(item.subcategory, 'name')));
-      row.push(csvStringify(getProp(item.brand, 'name')));
-      row.push(csvStringify(getProp(item.model, 'name')));
-      row.push(csvStringify(getProp(item.modification, 'name')));
-      row.push(csvStringify(item.description));
+      row.push(csvStringify(item.description?.root?.children?.[0]?.children?.[0]?.text || ''));
       row.push(csvStringify(item.shortDescription));
       row.push(csvStringify(item.oem));
       row.push(csvStringify(item.featured));
       row.push(csvStringify(item.inStock));
+      row.push(csvStringify(getProp(item.subcategory, 'name')));
+      row.push(csvStringify(getProp(item.brand, 'name')));
+      row.push(csvStringify(getProp(item.model, 'name')));
+      row.push(csvStringify(getProp(item.modification, 'name')));
       
-      // --- Corrected Image Handling ---
+      // Handle images
       let firstImageIdentifier = '';
       let allImageIdentifiers: string[] = [];
 
-      // Check if images field exists and is an array
       if (Array.isArray(item.images) && item.images.length > 0) {
-          // Process each object in the images array
-          for (const imgObj of item.images) {
-              // Assuming the media field within the object is named 'image'
-              const media = imgObj?.image; // Access the nested media field
-              const identifier = getImageIdentifier(media as Media | undefined);
-              if (identifier) {
-                  allImageIdentifiers.push(identifier);
-              }
+        for (const imgObj of item.images) {
+          const media = imgObj?.image;
+          const identifier = getImageIdentifier(media as Media | undefined);
+          if (identifier) {
+            allImageIdentifiers.push(identifier);
           }
-          // Get the first image identifier if available
-          firstImageIdentifier = allImageIdentifiers[0] || '';
+        }
+        firstImageIdentifier = allImageIdentifiers[0] || '';
       }
       
-      // Add first image identifier to the 'image' column
       row.push(csvStringify(firstImageIdentifier));
-      
-      // Add comma-separated list of all identifiers to the 'images' column
-      row.push(csvStringify(allImageIdentifiers.join(', ')));
-      // --- End Corrected Image Handling ---
+      row.push(csvStringify(allImageIdentifiers.join(',')));
       
       row.push(csvStringify(item.metaTitle));
       row.push(csvStringify(item.metaDescription));
-      
-      // Format complex fields back to JSON strings (or appropriate format for import)
-      row.push(csvStringify(formatArrayField(item.specifications)));
+      row.push(csvStringify(formatSpecifications(item.specifications)));
       row.push(csvStringify(getProp(item.marketplaceLinks, 'ozon')));
       row.push(csvStringify(getProp(item.marketplaceLinks, 'wildberries')));
-      row.push(csvStringify(formatArrayField(getProp(item.marketplaceLinks, 'others'))));
-      row.push(csvStringify(formatArrayField(item.distributors)));
+      row.push(csvStringify(formatMarketplaceLinks(getProp(item.marketplaceLinks, 'others'))));
+      row.push(csvStringify(formatDistributors(item.distributors)));
 
-      csvRows.push(row.join(','));
+      // Join row with semicolon delimiter
+      csvRows.push(row.join(';'));
     }
 
     const csvContent = csvRows.join('\n');
