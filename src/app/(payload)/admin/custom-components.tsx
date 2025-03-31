@@ -81,16 +81,16 @@ export const CSVImport = () => {
 
   return (
     <div style={{ margin: '2rem 0' }}>
-      <h2>Product Catalog Tools</h2>
+      <h2>Инструменты каталога товаров</h2>
       
       {/* Upload section */}
       <div style={{ 
         padding: '1.5rem', 
       }}>
-        <h3>Import Products from CSV</h3>
-        <p>Upload a CSV file to import products into the catalog.</p>
+        <h3>Импорт товаров из CSV</h3>
+        <p>Загрузите CSV файл для импорта товаров в каталог.</p>
         <p>
-          Required columns: name, category
+          Обязательные поля: название, категория
           {' '}
           <a
             href="/api/download-sample-csv"
@@ -98,7 +98,7 @@ export const CSVImport = () => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            Export Catalog
+            Экспорт каталога
           </a>
           <a 
             href="/api/download-template-csv" 
@@ -106,57 +106,47 @@ export const CSVImport = () => {
             target="_blank" 
             rel="noopener noreferrer"
           >
-            Download Template
+            Скачать шаблон
           </a>
         </p>
-        <p>Basic optional columns: slug, description, shortDescription, oem, featured, inStock, subcategory, brand, model, modification</p>
-        
+      
         {/* Advanced fields description - togglable */}
-        <div>
-          <button 
+        <div style={{ marginTop: '1rem' }}>
+          <button
             onClick={toggleAdvanced}
             style={{
-              padding: '0.3rem 0.7rem',
+              background: 'none',
+              border: 'none',
+              color: '#2196F3',
               cursor: 'pointer',
-              marginBottom: '0.5rem',
-              fontSize: '0.9rem'
+              padding: '0',
+              textDecoration: 'underline',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem'
             }}
           >
-            {showAdvanced ? 'Hide Advanced Fields' : 'Show Advanced Fields'}
+            {showAdvanced ? 'Скрыть дополнительные поля' : 'Показать дополнительные поля'}
+            <span style={{ transform: showAdvanced ? 'rotate(180deg)' : 'none' }}>▼</span>
           </button>
           
           {showAdvanced && (
-            <div style={{ 
-              padding: '1rem', 
-              marginBottom: '1rem'
-            }}>
-              <h4 style={{ margin: '0 0 0.5rem 0' }}>Advanced Fields</h4>
-              
-              <p style={{ margin: '0 0 0.3rem 0', fontWeight: 'bold' }}>Meta Information:</p>
-              <ul style={{ margin: '0 0 0.8rem 0' }}>
-                <li><strong>metaTitle</strong>: SEO title for the product page</li>
-                <li><strong>metaDescription</strong>: SEO description for the product page</li>
+            <div style={{ marginTop: '1rem', padding: '1rem'}}>
+              <p>Дополнительные поля:</p>
+              <ul style={{ margin: '0.5rem 0 0 1.5rem' }}>
+                <li>image - основное изображение (имя файла)</li>
+                <li>images - дополнительные изображения (имена файлов через запятую)</li>
+                <li>metaTitle - мета-заголовок</li>
+                <li>metaDescription - мета-описание</li>
+                <li>specifications - характеристики (формат: "название:значение, название:значение")</li>
+                <li>marketplaceLinks_ozon - ссылка на Ozon</li>
+                <li>marketplaceLinks_wildberries - ссылка на Wildberries</li>
+                <li>marketplaceLinks_others - другие маркетплейсы (формат: "название:ссылка:логотип, название:ссылка:логотип")</li>
+                <li>distributors - дистрибьюторы (формат: "название:ссылка:местоположение, название:ссылка:местоположение")</li>
               </ul>
-              
-              <p style={{ margin: '0 0 0.3rem 0', fontWeight: 'bold' }}>Specifications (JSON array):</p>
-              <ul style={{ margin: '0 0 0.8rem 0' }}>
-                <li><strong>specifications</strong>: Array of name/value pairs for product specifications</li>
-                <li>Format: <code>[{'{'}name:'Spec Name',value:'Spec Value'{'}'}]</code></li>
-              </ul>
-              
-              <p style={{ margin: '0 0 0.3rem 0', fontWeight: 'bold' }}>Marketplace Links:</p>
-              <ul style={{ margin: '0 0 0.8rem 0' }}>
-                <li><strong>marketplaceLinks_ozon</strong>: Link to Ozon listing</li>
-                <li><strong>marketplaceLinks_wildberries</strong>: Link to Wildberries listing</li>
-                <li><strong>marketplaceLinks_others</strong>: Array of other marketplace links</li>
-                <li>Format: <code>[{'{'}name:'Marketplace Name',url:'https://url.com',logo:'logo.png'{'}'}]</code></li>
-              </ul>
-              
-              <p style={{ margin: '0 0 0.3rem 0', fontWeight: 'bold' }}>Distributors:</p>
-              <ul style={{ margin: '0 0 0.5rem 0' }}>
-                <li><strong>distributors</strong>: Array of distributor information</li>
-                <li>Format: <code>[{'{'}name:'Distributor Name',url:'https://url.com',location:'Location'{'}'}]</code></li>
-              </ul>
+              <p style={{ marginTop: '1rem', color: 'red' }}>
+                Примечание: Все URL НЕ ДОЛЖНЫ начинаться с https://. https:// будет добавлено автоматически.
+              </p>
             </div>
           )}
         </div>
@@ -166,16 +156,16 @@ export const CSVImport = () => {
           marginTop: '1rem', 
           padding: '1rem', 
         }}>
-          <h4 style={{ margin: '0 0 0.5rem 0' }}>Image Support</h4>
+          <h4 style={{ margin: '0 0 0.5rem 0' }}>Поддержка изображений</h4>
           <p style={{ margin: '0 0 0.5rem 0' }}>
-            Include image file names in your CSV to associate uploaded media with products:
+            Укажите имена файлов изображений в CSV для связывания загруженных медиафайлов с товарами:
           </p>
           <ul style={{ margin: '0 0 0.5rem 0' }}>
-            <li><strong>image</strong>: Main product image (single file name, e.g., "product.jpg")</li>
-            <li><strong>images</strong>: Additional product images (comma-separated list, e.g., "image1.jpg, image2.jpg")</li>
+            <li><strong>image</strong>: Основное изображение товара (один файл, например, "product.jpg")</li>
+            <li><strong>images</strong>: Дополнительные изображения товара (список через запятую, например, "image1.jpg, image2.jpg")</li>
           </ul>
-          <p style={{ margin: '0', fontSize: '0.9rem' }}>
-            Note: Images must be uploaded to the Media collection first with matching filenames.
+          <p style={{ margin: '0', fontSize: '1rem', color: 'red' }}>
+            Примечание: Изображения должны быть предварительно загружены в коллекцию Media с соответствующими именами файлов.
           </p>
         </div>
         
