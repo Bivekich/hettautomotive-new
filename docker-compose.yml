@@ -7,15 +7,9 @@ services:
       dockerfile: Dockerfile
     restart: always
     ports:
-      - '8080:3000'
-    environment:
-      - NODE_ENV=production
-      - PORT=3000
-      - DATABASE_URI=${DATABASE_URI}
-      - PAYLOAD_SECRET=${PAYLOAD_SECRET}
-      - PAYLOAD_PUBLIC_SERVER_URL=${PAYLOAD_PUBLIC_SERVER_URL}
-      - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
-      - NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+      - '8081:8081'
+    env_file:
+      - .env
     volumes:
       - ./public/media:/app/public/media
       - ./public/uploads:/app/public/uploads
