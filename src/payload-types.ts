@@ -79,6 +79,7 @@ export interface Config {
     'page-descriptions': PageDescription;
     categories: Category;
     subcategories: Subcategory;
+    thirdsubcategories: Thirdsubcategory;
     brands: Brand;
     models: Model;
     modifications: Modification;
@@ -101,6 +102,7 @@ export interface Config {
     'page-descriptions': PageDescriptionsSelect<false> | PageDescriptionsSelect<true>;
     categories: CategoriesSelect<false> | CategoriesSelect<true>;
     subcategories: SubcategoriesSelect<false> | SubcategoriesSelect<true>;
+    thirdsubcategories: ThirdsubcategoriesSelect<false> | ThirdsubcategoriesSelect<true>;
     brands: BrandsSelect<false> | BrandsSelect<true>;
     models: ModelsSelect<false> | ModelsSelect<true>;
     modifications: ModificationsSelect<false> | ModificationsSelect<true>;
@@ -805,6 +807,47 @@ export interface Subcategory {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "thirdsubcategories".
+ */
+export interface Thirdsubcategory {
+  id: number;
+  name: string;
+  slug: string;
+  description?: {
+    root: {
+      type: string;
+      children: {
+        type: string;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  subcategory: number | Subcategory;
+  /**
+   * Third subcategory image
+   */
+  image?: (number | null) | Media;
+  /**
+   * Third subcategory icon
+   */
+  icon?: (number | null) | Media;
+  /**
+   * Show this third subcategory in featured sections
+   */
+  featured?: boolean | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "brands".
  */
 export interface Brand {
@@ -947,6 +990,7 @@ export interface Catalog {
   modification?: (number | null) | Modification;
   category: number | Category;
   subcategory?: (number | null) | Subcategory;
+  thirdsubcategory?: (number | null) | Thirdsubcategory;
   images?:
     | {
         image: number | Media;
@@ -1043,6 +1087,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'subcategories';
         value: number | Subcategory;
+      } | null)
+    | ({
+        relationTo: 'thirdsubcategories';
+        value: number | Thirdsubcategory;
       } | null)
     | ({
         relationTo: 'brands';
@@ -1477,6 +1525,23 @@ export interface SubcategoriesSelect<T extends boolean = true> {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "thirdsubcategories_select".
+ */
+export interface ThirdsubcategoriesSelect<T extends boolean = true> {
+  name?: T;
+  slug?: T;
+  description?: T;
+  subcategory?: T;
+  image?: T;
+  icon?: T;
+  featured?: T;
+  metaTitle?: T;
+  metaDescription?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "brands_select".
  */
 export interface BrandsSelect<T extends boolean = true> {
@@ -1544,6 +1609,7 @@ export interface CatalogSelect<T extends boolean = true> {
   modification?: T;
   category?: T;
   subcategory?: T;
+  thirdsubcategory?: T;
   images?:
     | T
     | {

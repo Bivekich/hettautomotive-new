@@ -20,6 +20,7 @@ import { PageDescriptions } from './collections/PageDescriptions'
 import Catalog from './collections/Catalog'
 import Categories from './collections/Categories'
 import Subcategories from './collections/Subcategories'
+import ThirdSubcategories from './collections/ThirdSubcategories'
 import Brands from './collections/Brands'
 import Models from './collections/Models'
 import Modifications from './collections/Modifications'
@@ -52,6 +53,7 @@ export default buildConfig({
     PageDescriptions,
     Categories,
     Subcategories,
+    ThirdSubcategories,
     Brands,
     Models,
     Modifications,
