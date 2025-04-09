@@ -18,6 +18,7 @@ const toBoolean = (value: string): boolean => {
 type CatalogCreateData = Partial<Omit<Catalog, 'id' | 'createdAt' | 'updatedAt'>> & {
   name: string
   slug: string
+  article: string // Make article required
   category: string // Expecting ID string
   brand?: string // Expecting ID string
   model?: string // Expecting ID string
@@ -82,14 +83,15 @@ const handler = async (req: PayloadRequest, res: Response, _next: NextFunction) 
     for await (const record of parser) {
       const rowIndex = importedCount + errors.length + 1
       try {
-        if (!record.name || !record.slug || !record.category) {
-          throw new Error(`Row ${rowIndex}: Missing required fields (name, slug, category ID)`)
+        if (!record.name || !record.slug || !record.category || !record.article) {
+          throw new Error(`Row ${rowIndex}: Missing required fields (name, slug, category ID, article)`)
         }
 
         // Use the corrected type for the data object
         const dataToCreate: CatalogCreateData = {
           name: record.name,
           slug: record.slug,
+          article: record.article,
           category: record.category,
           // Optional fields
           ...(record.shortDescription && { shortDescription: record.shortDescription }),

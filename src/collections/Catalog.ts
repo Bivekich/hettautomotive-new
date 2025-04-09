@@ -193,6 +193,16 @@ const Catalog: CollectionConfig = {
       label: 'OEM Number',
     },
     {
+      name: 'article',
+      type: 'text',
+      label: 'Артикуль',
+      required: true,
+      unique: true,
+      admin: {
+        description: 'Уникальный артикуль товара',
+      },
+    },
+    {
       name: 'marketplaceLinks',
       type: 'group',
       label: 'Marketplace Links',

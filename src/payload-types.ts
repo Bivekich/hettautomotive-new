@@ -219,7 +219,6 @@ export interface About {
     };
     [k: string]: unknown;
   };
-  mainImage: number | Media;
   features: {
     title: string;
     description: string;
@@ -243,7 +242,11 @@ export interface About {
       };
       [k: string]: unknown;
     };
-    image: number | Media;
+    images: {
+      image: number | Media;
+      alt?: string | null;
+      id?: string | null;
+    }[];
   };
   buySection: {
     title: string;
@@ -280,12 +283,14 @@ export interface About {
           }[]
         | null;
     };
-    partners: {
-      name: string;
-      logo: number | Media;
-      url?: string | null;
-      id?: string | null;
-    }[];
+    partners?:
+      | {
+          name: string;
+          logo: number | Media;
+          url?: string | null;
+          id?: string | null;
+        }[]
+      | null;
   };
   metaTitle?: string | null;
   metaDescription?: string | null;
@@ -480,6 +485,10 @@ export interface CustomPage {
    */
   slug: string;
   status: 'draft' | 'published';
+  /**
+   * Display this page in the top navigation menu
+   */
+  showInMenu?: boolean | null;
   heroSection?: {
     enabled?: boolean | null;
     image?: (number | null) | Media;
@@ -612,6 +621,14 @@ export interface Setting {
      * Descriptive text for the address (e.g., "Наш адрес")
      */
     addressLabel?: string | null;
+    mapButton?: {
+      text?: string | null;
+      /**
+       * URL to open when the map button is clicked (e.g., Google Maps or Yandex Maps link)
+       */
+      url?: string | null;
+      enabled?: boolean | null;
+    };
     /**
      * Social media links to display in the footer (can be different from header)
      */
@@ -1008,6 +1025,10 @@ export interface Catalog {
       }[]
     | null;
   oem?: string | null;
+  /**
+   * Уникальный артикуль товара
+   */
+  article: string;
   marketplaceLinks?: {
     ozon?: string | null;
     wildberries?: string | null;
@@ -1209,7 +1230,6 @@ export interface BannersSelect<T extends boolean = true> {
 export interface AboutSelect<T extends boolean = true> {
   title?: T;
   mainContent?: T;
-  mainImage?: T;
   features?:
     | T
     | {
@@ -1223,7 +1243,13 @@ export interface AboutSelect<T extends boolean = true> {
     | {
         title?: T;
         description?: T;
-        image?: T;
+        images?:
+          | T
+          | {
+              image?: T;
+              alt?: T;
+              id?: T;
+            };
       };
   buySection?:
     | T
@@ -1382,6 +1408,7 @@ export interface CustomPagesSelect<T extends boolean = true> {
   title?: T;
   slug?: T;
   status?: T;
+  showInMenu?: T;
   heroSection?:
     | T
     | {
@@ -1436,6 +1463,13 @@ export interface SettingsSelect<T extends boolean = true> {
         emailLabel?: T;
         address?: T;
         addressLabel?: T;
+        mapButton?:
+          | T
+          | {
+              text?: T;
+              url?: T;
+              enabled?: T;
+            };
         socialLinks?:
           | T
           | {
@@ -1627,6 +1661,7 @@ export interface CatalogSelect<T extends boolean = true> {
         id?: T;
       };
   oem?: T;
+  article?: T;
   marketplaceLinks?:
     | T
     | {

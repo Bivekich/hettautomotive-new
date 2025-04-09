@@ -143,6 +143,33 @@ export const Settings: CollectionConfig = {
           },
         },
         {
+          name: 'mapButton',
+          type: 'group',
+          label: 'Map Button',
+          fields: [
+            {
+              name: 'text',
+              type: 'text',
+              label: 'Button Text',
+              defaultValue: 'Показать на карте',
+            },
+            {
+              name: 'url',
+              type: 'text',
+              label: 'Map URL',
+              admin: {
+                description: 'URL to open when the map button is clicked (e.g., Google Maps or Yandex Maps link)'
+              },
+            },
+            {
+              name: 'enabled',
+              type: 'checkbox',
+              label: 'Show Map Button',
+              defaultValue: true,
+            }
+          ],
+        },
+        {
           name: 'socialLinks',
           type: 'array',
           label: 'Social Media Links',
