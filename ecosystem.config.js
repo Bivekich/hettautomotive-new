@@ -1,4 +1,4 @@
-module.exports = {
+export default {
   apps: [
     {
       name: 'hett-cms',
@@ -8,6 +8,10 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3002,
       },
+      instances: 1,
+      autorestart: true,
+      watch: false,
+      max_memory_restart: '1G',
     },
   ],
 }
