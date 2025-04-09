@@ -71,6 +71,7 @@ interface CsvRow {
   description?: string
   shortDescription?: string
   oem?: string
+  article: string
   featured?: string // Expecting 'true'/'false' etc.
   inStock?: string // Expecting 'true'/'false' etc.
   metaTitle?: string
@@ -81,6 +82,7 @@ interface CsvRow {
   marketplaceLinks_others?: string // Expecting JSON string: [{name: string, url: string, logo?: string | number}]
   distributors?: string // Expecting JSON string: [{name: string, url?: string, location?: string}]
   subcategory?: string // Expecting name
+  thirdsubcategory?: string // Expecting name
   brand?: string // Expecting name
   model?: string // Expecting name
   modification?: string // Expecting name
@@ -177,12 +179,11 @@ export async function importCSV(
 
     for (const source of productsData) {
       // Basic validation
-      if (!source.name || !source.category) {
-        console.error('Skipping product with missing required fields (name, category):', source)
+      if (!source.name || !source.category || !source.article) {
+        console.error('Skipping product with missing required fields (name, category, article):', source)
         skipCount++
         continue
       }
-
       const productData: Partial<Omit<Catalog, 'id' | 'createdAt' | 'updatedAt'>> = {} // Define outside try block for error logging
 
       try {
@@ -238,10 +239,11 @@ export async function importCSV(
         }
 
         // Prepare data structure matching Catalog collection type
-        const productData: Pick<Catalog, 'name' | 'slug'> &
-          Partial<Omit<Catalog, 'id' | 'createdAt' | 'updatedAt' | 'name' | 'slug'>> = {
+        const productData: Pick<Catalog, 'name' | 'slug' | 'article'> &
+          Partial<Omit<Catalog, 'id' | 'createdAt' | 'updatedAt' | 'name' | 'slug' | 'article'>> = {
           name: source.name,
           slug: slug,
+          article: source.article,
           description: source.description
             ? {
                 root: {
@@ -426,6 +428,40 @@ export async function importCSV(
             })
             if (subcategories.docs.length > 0) {
               productData.subcategory = subcategories.docs[0].id
+              
+              // Third subcategory (optional)
+              if (source.thirdsubcategory) {
+                try {
+                  const thirdSubcategories = await payload.find({
+                    collection: 'thirdsubcategories',
+                    where: { 
+                      name: { equals: source.thirdsubcategory },
+                      subcategory: { equals: subcategories.docs[0].id }
+                    },
+                    limit: 1,
+                    depth: 0,
+                  })
+                  if (thirdSubcategories.docs.length > 0) {
+                    productData.thirdsubcategory = thirdSubcategories.docs[0].id
+                  } else {
+                    console.warn(`Third subcategory "${source.thirdsubcategory}" not found. Creating it.`)
+                    const newThirdSubcategory = await payload.create({
+                      collection: 'thirdsubcategories',
+                      data: {
+                        name: source.thirdsubcategory,
+                        slug: slugify(source.thirdsubcategory),
+                        subcategory: subcategories.docs[0].id,
+                      },
+                    })
+                    productData.thirdsubcategory = newThirdSubcategory.id
+                  }
+                } catch (error) {
+                  console.warn(
+                    `Error processing third subcategory "${source.thirdsubcategory}" for product "${source.name}". Skipping field.`,
+                    error,
+                  )
+                }
+              }
             } else {
               console.warn(`Subcategory "${source.subcategory}" not found. Creating it.`)
               // Ensure categoryId is valid before creating subcategory
@@ -436,9 +472,29 @@ export async function importCSV(
                     name: source.subcategory,
                     slug: slugify(source.subcategory),
                     category: categoryId,
-                  }, // Requires category
+                  },
                 })
                 productData.subcategory = newSubcategory.id
+                
+                // Create third subcategory if specified
+                if (source.thirdsubcategory) {
+                  try {
+                    const newThirdSubcategory = await payload.create({
+                      collection: 'thirdsubcategories',
+                      data: {
+                        name: source.thirdsubcategory,
+                        slug: slugify(source.thirdsubcategory),
+                        subcategory: newSubcategory.id,
+                      },
+                    })
+                    productData.thirdsubcategory = newThirdSubcategory.id
+                  } catch (error) {
+                    console.warn(
+                      `Error creating third subcategory "${source.thirdsubcategory}" for product "${source.name}". Skipping field.`,
+                      error,
+                    )
+                  }
+                }
               } else {
                 console.warn(
                   `Cannot create subcategory "${source.subcategory}" because category ID is missing.`,
@@ -655,7 +711,7 @@ export async function importCSV(
           // Assert the data type for create, ensuring required fields are present
           await payload.create({
             collection: 'catalog',
-            data: createData as Pick<Catalog, 'name' | 'slug' | 'category'> & typeof createData,
+            data: createData as Pick<Catalog, 'name' | 'slug' | 'category' | 'article'> & typeof createData,
           })
         }
 

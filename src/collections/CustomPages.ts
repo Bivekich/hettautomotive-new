@@ -45,6 +45,16 @@ export const CustomPages: CollectionConfig = {
       ],
     },
     {
+      name: 'showInMenu',
+      type: 'checkbox',
+      label: 'Show in Top Menu',
+      defaultValue: false,
+      admin: {
+        description: 'Display this page in the top navigation menu',
+        position: 'sidebar',
+      },
+    },
+    {
       name: 'heroSection',
       type: 'group',
       label: 'Hero Section',

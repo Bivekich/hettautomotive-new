@@ -61,9 +61,11 @@ export async function GET() {
       'description',
       'shortDescription',
       'oem',
+      'article',
       'featured',
       'inStock',
       'subcategory',
+      'thirdsubcategory',
       'brand',
       'model',
       'modification',
@@ -150,7 +152,7 @@ export async function GET() {
       row.push(csvStringify(getProp(item.category, 'name')))
       row.push(csvStringify(item.slug))
 
-      // Исправляем ошибку с типами при доступе к вложенным свойствам description
+      // Fix description access with proper type checking
       let description = ''
       if (
         item.description &&
@@ -176,9 +178,11 @@ export async function GET() {
 
       row.push(csvStringify(item.shortDescription))
       row.push(csvStringify(item.oem))
+      row.push(csvStringify(item.article))
       row.push(csvStringify(item.featured))
       row.push(csvStringify(item.inStock))
       row.push(csvStringify(getProp(item.subcategory, 'name')))
+      row.push(csvStringify(getProp(item.thirdsubcategory, 'name'))) // Added third subcategory
       row.push(csvStringify(getProp(item.brand, 'name')))
       row.push(csvStringify(getProp(item.model, 'name')))
       row.push(csvStringify(getProp(item.modification, 'name')))
@@ -206,20 +210,20 @@ export async function GET() {
       row.push(csvStringify(item.metaTitle))
       row.push(csvStringify(item.metaDescription))
 
-      // Проверяем, что item.specifications - это массив перед передачей в formatSpecifications
+      // Check that item.specifications is an array before passing to formatSpecifications
       const specifications = Array.isArray(item.specifications) ? item.specifications : null
       row.push(csvStringify(formatSpecifications(specifications)))
 
       row.push(csvStringify(getProp(item.marketplaceLinks, 'ozon')))
       row.push(csvStringify(getProp(item.marketplaceLinks, 'wildberries')))
 
-      // Проверяем, что others - это массив перед передачей в formatMarketplaceLinks
+      // Check that others is an array before passing to formatMarketplaceLinks
       const marketplaceOthers = Array.isArray(getProp(item.marketplaceLinks, 'others'))
         ? (getProp(item.marketplaceLinks, 'others') as unknown[])
         : null
       row.push(csvStringify(formatMarketplaceLinks(marketplaceOthers)))
 
-      // Проверяем, что distributors - это массив
+      // Check that distributors is an array
       const distributors = Array.isArray(item.distributors) ? item.distributors : null
       row.push(csvStringify(formatDistributors(distributors)))
 

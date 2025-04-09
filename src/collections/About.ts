@@ -23,13 +23,6 @@ export const About: CollectionConfig = {
       label: 'Main Content',
     },
     {
-      name: 'mainImage',
-      type: 'upload',
-      relationTo: 'media',
-      required: true,
-      label: 'Main Image',
-    },
-    {
       name: 'features',
       type: 'array',
       label: 'Features',
@@ -73,12 +66,27 @@ export const About: CollectionConfig = {
           label: 'Section Description',
         },
         {
-          name: 'image',
-          type: 'upload',
-          relationTo: 'media',
+          name: 'images',
+          type: 'array',
+          label: 'Production Images',
           required: true,
-          label: 'Section Image',
-        },
+          minRows: 1,
+          maxRows: 8,
+          fields: [
+            {
+              name: 'image',
+              type: 'upload',
+              relationTo: 'media',
+              required: true,
+              label: 'Image',
+            },
+            {
+              name: 'alt',
+              type: 'text',
+              label: 'Alt Text',
+            }
+          ],
+        }
       ],
     },
     {
@@ -192,7 +200,6 @@ export const About: CollectionConfig = {
           name: 'partners',
           type: 'array',
           label: 'Partners',
-          required: true,
           fields: [
             {
               name: 'name',
