@@ -92,7 +92,7 @@ export const CSVImport = () => {
         <h3>Импорт товаров из CSV</h3>
         <p>Загрузите CSV файл для импорта товаров в каталог.</p>
         <p>
-          Обязательные поля: название, категория{' '}
+          Обязательные поля: <strong>name</strong>, <strong>category</strong>, <strong>article</strong>
           <a
             href="/api/download-sample-csv"
             style={{ color: '#2196F3', textDecoration: 'underline', marginRight: '1rem' }}
@@ -127,36 +127,47 @@ export const CSVImport = () => {
               gap: '0.5rem',
             }}
           >
-            {showAdvanced ? 'Скрыть дополнительные поля' : 'Показать дополнительные поля'}
+            {showAdvanced ? 'Скрыть инструкцию' : 'Показать инструкцию по заполнению полей'}
             <span style={{ transform: showAdvanced ? 'rotate(180deg)' : 'none' }}>▼</span>
           </button>
 
           {showAdvanced && (
             <div style={{ marginTop: '1rem', padding: '1rem' }}>
-              <p>Дополнительные поля:</p>
-              <ul style={{ margin: '0.5rem 0 0 1.5rem' }}>
-                <li>image - основное изображение (имя файла)</li>
-                <li>images - дополнительные изображения (имена файлов через запятую)</li>
-                <li>metaTitle - мета-заголовок</li>
-                <li>metaDescription - мета-описание</li>
+              <p>Заголовок CSV должен содержать следующие поля (порядок важен):</p>
+              <ul style={{ margin: '0.5rem 0 0 1.5rem', listStyleType: 'disc' }}>
+                <li><strong>name</strong> - Название товара (Обязательно)</li>
+                <li><strong>category</strong> - Название категории (Обязательно)</li>
+                <li><strong>slug</strong> - URL-слаг (если пусто, генерируется из названия)</li>
+                <li><strong>description</strong> - Полное описание товара (простой текст)</li>
+                <li><strong>shortDescription</strong> - Краткое описание</li>
+                <li><strong>oem</strong> - OEM номер</li>
+                <li><strong>article</strong> - Уникальный артикул товара (Обязательно)</li>
+                <li><strong>featured</strong> - Рекомендуемый товар (true/false)</li>
+                <li><strong>inStock</strong> - В наличии (true/false, по умолчанию true)</li>
+                <li><strong>subcategory</strong> - Название подкатегории</li>
+                <li><strong>thirdsubcategory</strong> - Название подкатегории 3-го уровня</li>
+                <li><strong>brand</strong> - Название бренда (несколько через &apos;|&apos;, например &quot;Бренд1|Бренд2&quot;)</li>
+                <li><strong>model</strong> - Название модели</li>
+                <li><strong>modification</strong> - Название модификации</li>
+                <li><strong>image</strong> - Основное изображение (имя файла из Media)</li>
+                <li><strong>images</strong> - Доп. изображения (имена файлов через запятую: &quot;img1.jpg,img2.jpg&quot;)</li>
+                <li><strong>metaTitle</strong> - Мета-заголовок (SEO)</li>
+                <li><strong>metaDescription</strong> - Мета-описание (SEO)</li>
                 <li>
-                  specifications - характеристики (формат: &quot;название:значение,
-                  название:значение&quot;)
+                  <strong>specifications</strong> - Характеристики (формат: &quot;Название1:Значение1,Название2:Значение2&quot;)
                 </li>
-                <li>marketplaceLinks_ozon - ссылка на Ozon</li>
-                <li>marketplaceLinks_wildberries - ссылка на Wildberries</li>
+                <li><strong>marketplaceLinks_ozon</strong> - Ссылка Ozon (без https://)</li>
+                <li><strong>marketplaceLinks_wildberries</strong> - Ссылка Wildberries (без https://)</li>
                 <li>
-                  marketplaceLinks_others - другие маркетплейсы (формат:
-                  &quot;название:ссылка:логотип, название:ссылка:логотип&quot;)
+                  <strong>marketplaceLinks_others</strong> - Другие маркетплейсы (формат: &quot;Название:Ссылка:Логотип.jpg,...&quot;)
                 </li>
                 <li>
-                  distributors - дистрибьюторы (формат: &quot;название:ссылка:местоположение,
-                  название:ссылка:местоположение&quot;)
+                  <strong>distributors</strong> - Дистрибьюторы (формат: &quot;Название:Ссылка:Место,...&quot;)
                 </li>
               </ul>
               <p style={{ marginTop: '1rem', color: 'red' }}>
-                Примечание: Все URL НЕ ДОЛЖНЫ начинаться с https://. https:// будет добавлено
-                автоматически.
+                Примечание: URL в полях marketplaceLinks_* и distributors НЕ ДОЛЖНЫ начинаться с https://.
+                Оно будет добавлено автоматически.
               </p>
             </div>
           )}
@@ -176,12 +187,10 @@ export const CSVImport = () => {
           </p>
           <ul style={{ margin: '0 0 0.5rem 0' }}>
             <li>
-              <strong>image</strong>: Основное изображение товара (один файл, например,
-              &quot;product.jpg&quot;)
+              <strong>image</strong>: Основное изображение товара (один файл, например, &quot;product.jpg&quot;)
             </li>
             <li>
-              <strong>images</strong>: Дополнительные изображения товара (список через запятую,
-              например, &quot;image1.jpg, image2.jpg&quot;)
+              <strong>images</strong>: Дополнительные изображения товара (список через запятую, например, &quot;image1.jpg, image2.jpg&quot;)
             </li>
           </ul>
           <p style={{ margin: '0', fontSize: '1rem', color: 'red' }}>

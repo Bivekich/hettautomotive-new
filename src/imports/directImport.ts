@@ -3,7 +3,8 @@ import csv from 'csvtojson'
 import type { Payload } from 'payload'
 import fs from 'fs'
 // Импортируем только используемые типы
-import type { Catalog, Model, Modification } from '../payload-types'
+import type { Catalog, Model, Modification, Media } from '../payload-types'
+import type { CollectionSlug, Where } from 'payload' // Correct import path
 
 // Function to slugify text
 const slugify = (text: string): string => {
@@ -61,6 +62,97 @@ const _safeParse = (
       return defaultValue
     }
   }
+}
+
+// Helper function to find or create a SINGLE related document by name
+// Returns the ID or undefined if name is empty or error occurs
+async function findOrCreateRelated(
+  payload: Payload,
+  collectionSlug: CollectionSlug, // Use specific type
+  name: string,
+  parentInfo?: { parentCollection: string; parentId: string | number }, // Optional: for nested collections like model/modification
+): Promise<string | number | undefined> {
+  if (!name || !name.trim()) {
+    return undefined
+  }
+  const trimmedName = name.trim()
+  console.log(`Finding or creating related item in '${collectionSlug}' with name: "${trimmedName}"`)
+
+  try {
+    // Define the base query
+    const query: Where = { name: { equals: trimmedName } } // Use Where type
+
+    // Add parent filter if provided (for models/modifications)
+    if (parentInfo && parentInfo.parentCollection && parentInfo.parentId) {
+      query[parentInfo.parentCollection] = { equals: parentInfo.parentId }
+      console.log(`  ...within parent ${parentInfo.parentCollection}: ${parentInfo.parentId}`)
+    }
+
+    // Find existing
+    const existing = await payload.find({
+      collection: collectionSlug,
+      where: query,
+      limit: 1,
+      depth: 0,
+    })
+
+    if (existing.docs.length > 0) {
+      console.log(`  Found existing ${collectionSlug} with ID: ${existing.docs[0].id}`)
+      return existing.docs[0].id
+    }
+
+    // Create new if not found
+    console.log(`  ${collectionSlug} not found, creating new...`)
+    const creationData: { name: string; slug: string; [key: string]: unknown } = {
+      name: trimmedName,
+      slug: slugify(trimmedName), // Assuming related collections have name and slug
+    }
+
+    // Add parent ID if provided
+    if (parentInfo && parentInfo.parentCollection && parentInfo.parentId) {
+      creationData[parentInfo.parentCollection] = parentInfo.parentId
+    }
+
+    const created = await payload.create({
+      collection: collectionSlug,
+      data: creationData,
+    })
+    console.log(`  Created new ${collectionSlug} with ID: ${created.id}`)
+    return created.id
+  } catch (err) {
+    console.error(
+      `Error finding or creating related item in '${collectionSlug}' with name "${trimmedName}":`,
+      err,
+    )
+    return undefined
+  }
+}
+
+// Helper function to find or create MULTIPLE related documents by name (separated by |)
+// Returns an array of IDs
+async function findOrCreateMultipleRelated(
+  payload: Payload,
+  collectionSlug: CollectionSlug, // Use specific type
+  namesString: string | null | undefined,
+): Promise<(string | number)[]> {
+  if (!namesString || !namesString.trim()) {
+    return []
+  }
+
+  const names = namesString.split('|').map(name => name.trim()).filter(name => name);
+  const ids: (string | number)[] = [];
+
+  console.log(`Finding or creating multiple related items in '${collectionSlug}' with names: "${names.join(', ')}"`);
+
+  for (const name of names) {
+    const id = await findOrCreateRelated(payload, collectionSlug, name);
+    if (id !== undefined) {
+      ids.push(id);
+    }
+  }
+
+  console.log(`  Resolved IDs for ${collectionSlug}: ${ids.join(', ')}`);
+  return ids;
 }
 
 // Define an interface for the expected structure of a CSV row
@@ -163,7 +255,8 @@ export async function importCSV(
 ): Promise<{ success: number; failed: number }> {
   let successCount = 0
   let skipCount = 0
-  let productsData: CsvRow[] = [] // Define productsData here so it's accessible in the final catch block
+  let productsData: CsvRow[] = []
+  let currentRowIndex = -1; // For error logging
 
   try {
     if (!fs.existsSync(filePath)) {
@@ -177,14 +270,17 @@ export async function importCSV(
     productsData = await csv({ delimiter: ';' }).fromFile(filePath)
     console.log(`Found ${productsData.length} products in CSV.`)
 
-    for (const source of productsData) {
+    for (let i = 0; i < productsData.length; i++) {
+      currentRowIndex = i;
+      const source = productsData[i];
+      let productDataForDb: Partial<Catalog> = {}; // Initialize as Partial<Catalog>
+
       // Basic validation
       if (!source.name || !source.category || !source.article) {
-        console.error('Skipping product with missing required fields (name, category, article):', source)
+        console.error(`Skipping row ${i + 1}: Missing required fields (name, category, article):`, source)
         skipCount++
         continue
       }
-      const productData: Partial<Omit<Catalog, 'id' | 'createdAt' | 'updatedAt'>> = {} // Define outside try block for error logging
 
       try {
         const slug = source.slug || slugify(source.name)
@@ -238,515 +334,227 @@ export async function importCSV(
           }
         }
 
-        // Prepare data structure matching Catalog collection type
-        const productData: Pick<Catalog, 'name' | 'slug' | 'article'> &
-          Partial<Omit<Catalog, 'id' | 'createdAt' | 'updatedAt' | 'name' | 'slug' | 'article'>> = {
+        // --- Prepare Base Data --- 
+        productDataForDb = {
           name: source.name,
           slug: slug,
           article: source.article,
-          description: source.description
-            ? {
+        };
+
+        // --- Process Optional Fields --- 
+        if (source.description) {
+          productDataForDb.description = {
                 root: {
                   type: 'root',
+              version: 1,
+              direction: null, // Add default direction
+              format: '',      // Add default format
+              indent: 0,       // Add default indent
                   children: [
                     {
                       type: 'paragraph',
-                      children: [
-                        {
-                          type: 'text',
-                          text: source.description,
-                          version: 1,
-                        },
-                      ],
-                      version: 1,
-                    },
-                  ],
-                  direction: 'ltr',
-                  format: '',
-                  indent: 0,
                   version: 1,
+                  children: [{ type: 'text', text: source.description }],
                 },
-              }
-            : undefined,
-          shortDescription: source.shortDescription || undefined,
-          oem: source.oem || undefined,
-          featured: toBoolean(source.featured),
-          inStock: toBoolean(source.inStock ?? 'true'),
-          metaTitle: source.metaTitle || undefined,
-          metaDescription: source.metaDescription || undefined,
-          specifications: [], // Initialize empty
-          marketplaceLinks: {
-            // Initialize structure
-            ozon: source.marketplaceLinks_ozon || undefined,
-            wildberries: source.marketplaceLinks_wildberries || undefined,
-            others: [],
-          },
-          distributors: [], // Initialize empty
+              ],
+            },
+          };
+        }
+        if (source.shortDescription) productDataForDb.shortDescription = source.shortDescription;
+        if (source.oem) productDataForDb.oem = source.oem;
+        productDataForDb.featured = toBoolean(source.featured); // Defaults to false if invalid
+        productDataForDb.inStock = source.inStock !== undefined ? toBoolean(source.inStock) : true; // Defaults to true
+        if (source.metaTitle) productDataForDb.metaTitle = source.metaTitle;
+        if (source.metaDescription) productDataForDb.metaDescription = source.metaDescription;
+
+        // --- Handle Complex Fields --- 
+        if (source.specifications) {
+          const specs = parseSpecifications(source.specifications);
+          if (specs.length > 0) productDataForDb.specifications = specs;
         }
 
-        // Parse specifications
-        let specifications: { name: string; value: string }[] = []
-        try {
-          specifications = parseSpecifications(source.specifications || '')
-        } catch (error) {
-          console.error(`Failed to parse specifications for product ${source.name}:`, error)
-        }
-
-        // Handle specifications (array of name/value pairs)
-        if (specifications.length > 0) {
-          productData.specifications = specifications
-            .filter((item) => item && typeof item === 'object' && item.name && item.value)
-            .map((item) => ({ id: undefined, name: item.name, value: item.value }))
-        } else {
-          console.warn(
-            `Invalid format for specifications for "${source.name}". Expected JSON array.`,
-          )
-        }
-
-        // Parse marketplace links
-        let marketplaceLinks_others: {
-          name: string
-          url: string
-          logo?: string | number | null
-        }[] = []
-        try {
-          marketplaceLinks_others = parseMarketplaceLinks(source.marketplaceLinks_others || '')
-        } catch (error) {
-          console.error(`Failed to parse marketplace links for product ${source.name}:`, error)
-        }
-
-        // Handle marketplace links
-        if (productData.marketplaceLinks) {
-          productData.marketplaceLinks.ozon = source.marketplaceLinks_ozon || undefined
-          productData.marketplaceLinks.wildberries =
-            source.marketplaceLinks_wildberries || undefined
-
-          if (marketplaceLinks_others.length > 0) {
-            console.log(
-              `Processing ${marketplaceLinks_others.length} other marketplace links for ${source.name}`,
-            )
-            const processedLinks = await Promise.all(
-              marketplaceLinks_others.map(async (item) => {
-                console.log(`Processing marketplace link: ${item.name} - ${item.url}`)
-                if (item.logo) {
-                  const media = await payload.find({
-                    collection: 'media',
-                    where: { filename: { equals: item.logo } },
-                    limit: 1,
-                    depth: 0,
-                  })
-
-                  if (media.docs.length > 0) {
-                    console.log(`Found logo for ${item.name}: ${media.docs[0].id}`)
-                    return {
-                      id: undefined,
-                      name: item.name,
-                      url: item.url,
-                      logo: media.docs[0].id,
-                    }
-                  }
-                }
-                return {
-                  id: undefined,
-                  name: item.name,
-                  url: item.url,
-                }
-              }),
-            )
-
-            // Only set others if we have processed links
-            if (processedLinks.length > 0) {
-              console.log(`Setting ${processedLinks.length} marketplace links for ${source.name}`)
-              productData.marketplaceLinks.others = processedLinks
+        // Marketplace Links
+        const othersLinksRaw = parseMarketplaceLinks(source.marketplaceLinks_others || '' );
+        const othersLinksProcessed = [];
+        for (const link of othersLinksRaw) {
+            let logoId: string | number | undefined | Media | null = undefined;
+            if (link.logo && typeof link.logo === 'string') {
+                logoId = await findMedia(link.logo);
             }
-          }
+             othersLinksProcessed.push({
+                name: link.name,
+                url: link.url,
+                logo: logoId as (number | Media | null | undefined), // Assign resolved ID
+             });
+        }
+        if (source.marketplaceLinks_ozon || source.marketplaceLinks_wildberries || othersLinksProcessed.length > 0) {
+          productDataForDb.marketplaceLinks = {
+            ozon: ensureHttps(source.marketplaceLinks_ozon || '') || null, // Use null for empty optional fields
+            wildberries: ensureHttps(source.marketplaceLinks_wildberries || '') || null,
+            others: othersLinksProcessed,
+          };
         }
 
-        // Parse distributors
-        let distributors: { name: string; url: string; location: string | null }[] = []
-        try {
-          distributors = parseDistributors(source.distributors || '')
-        } catch (error) {
-          console.error(`Failed to parse distributors for product ${source.name}:`, error)
+        if (source.distributors) {
+          const dist = parseDistributors(source.distributors);
+          if (dist.length > 0) productDataForDb.distributors = dist;
         }
 
-        // Handle distributors
-        if (distributors.length > 0) {
-          console.log(`Processing ${distributors.length} distributors for ${source.name}`)
-          productData.distributors = distributors.map((item) => {
-            console.log(`Processing distributor: ${item.name} - ${item.url} - ${item.location}`)
-            return {
-              id: undefined,
-              name: item.name,
-              url: item.url,
-              location: item.location,
+        // Images
+        const imageIdentifiers = (source.images || '').split(',').map(s => s.trim()).filter(s => s);
+        const imageRelationArray: { image: number | Media }[] = [];
+        for (const identifier of imageIdentifiers) {
+            const mediaId = await findMedia(identifier);
+            if (mediaId) {
+                imageRelationArray.push({ image: mediaId as (number | Media) });
             }
-          })
+        }
+        if (imageRelationArray.length > 0) {
+            productDataForDb.images = imageRelationArray;
         }
 
-        // --- Handle Relationships ---
-        let categoryId: string | number | undefined
-        let brandId: string | number | undefined
-        let modelId: string | number | undefined
-
-        // Category (required)
-        try {
-          const categories = await payload.find({
-            collection: 'categories',
-            where: { name: { equals: source.category } },
-            limit: 1,
-            depth: 0,
-          })
-          if (categories.docs.length > 0) {
-            categoryId = categories.docs[0].id
-          } else {
-            console.warn(`Category "${source.category}" not found. Creating it.`)
-            const newCategory = await payload.create({
-              collection: 'categories',
-              data: { name: source.category, slug: slugify(source.category) },
-            })
-            categoryId = newCategory.id
-          }
-          productData.category = categoryId
-        } catch (error) {
-          console.error(
-            `Error processing category "${source.category}" for product "${source.name}":`,
-            error,
-          )
-          skipCount++
-          continue // Skip product if category fails
+        // --- Handle Relationships --- 
+        const categoryId = await findOrCreateRelated(payload, 'categories', source.category);
+        let subcategoryId: string | number | undefined;
+        if (source.subcategory && categoryId) { // Only process if subcategory name and categoryId exist
+          subcategoryId = await findOrCreateRelated(
+            payload,
+            'subcategories',
+            source.subcategory,
+            { parentCollection: 'category', parentId: categoryId } // Pass categoryId as parent context
+          );
+        }
+        
+        let thirdsubcategoryId: string | number | undefined;
+        if (source.thirdsubcategory && subcategoryId) { // Only process if third subcategory name and subcategoryId exist
+           thirdsubcategoryId = await findOrCreateRelated(
+            payload,
+            'thirdsubcategories',
+            source.thirdsubcategory,
+            { parentCollection: 'subcategory', parentId: subcategoryId } // Pass subcategoryId as parent context
+          );
         }
 
-        // Subcategory (optional)
-        if (source.subcategory) {
-          try {
-            const subcategories = await payload.find({
-              collection: 'subcategories',
-              where: { name: { equals: source.subcategory } },
-              limit: 1,
-              depth: 0,
-            })
-            if (subcategories.docs.length > 0) {
-              productData.subcategory = subcategories.docs[0].id
-              
-              // Third subcategory (optional)
-              if (source.thirdsubcategory) {
-                try {
-                  const thirdSubcategories = await payload.find({
-                    collection: 'thirdsubcategories',
-                    where: { 
-                      name: { equals: source.thirdsubcategory },
-                      subcategory: { equals: subcategories.docs[0].id }
-                    },
-                    limit: 1,
-                    depth: 0,
-                  })
-                  if (thirdSubcategories.docs.length > 0) {
-                    productData.thirdsubcategory = thirdSubcategories.docs[0].id
-                  } else {
-                    console.warn(`Third subcategory "${source.thirdsubcategory}" not found. Creating it.`)
-                    const newThirdSubcategory = await payload.create({
-                      collection: 'thirdsubcategories',
-                      data: {
-                        name: source.thirdsubcategory,
-                        slug: slugify(source.thirdsubcategory),
-                        subcategory: subcategories.docs[0].id,
-                      },
-                    })
-                    productData.thirdsubcategory = newThirdSubcategory.id
-                  }
-                } catch (error) {
-                  console.warn(
-                    `Error processing third subcategory "${source.thirdsubcategory}" for product "${source.name}". Skipping field.`,
-                    error,
-                  )
-                }
-              }
-            } else {
-              console.warn(`Subcategory "${source.subcategory}" not found. Creating it.`)
-              // Ensure categoryId is valid before creating subcategory
-              if (categoryId) {
-                const newSubcategory = await payload.create({
-                  collection: 'subcategories',
-                  data: {
-                    name: source.subcategory,
-                    slug: slugify(source.subcategory),
-                    category: categoryId,
-                  },
-                })
-                productData.subcategory = newSubcategory.id
-                
-                // Create third subcategory if specified
-                if (source.thirdsubcategory) {
-                  try {
-                    const newThirdSubcategory = await payload.create({
-                      collection: 'thirdsubcategories',
-                      data: {
-                        name: source.thirdsubcategory,
-                        slug: slugify(source.thirdsubcategory),
-                        subcategory: newSubcategory.id,
-                      },
-                    })
-                    productData.thirdsubcategory = newThirdSubcategory.id
-                  } catch (error) {
-                    console.warn(
-                      `Error creating third subcategory "${source.thirdsubcategory}" for product "${source.name}". Skipping field.`,
-                      error,
-                    )
-                  }
-                }
-              } else {
-                console.warn(
-                  `Cannot create subcategory "${source.subcategory}" because category ID is missing.`,
-                )
-              }
-            }
-          } catch (error) {
-            console.warn(
-              `Error processing subcategory "${source.subcategory}" for product "${source.name}". Skipping field.`,
-              error,
-            )
-          }
-        }
+        const brandIds = await findOrCreateMultipleRelated(payload, 'brands', source.brand);
+        let modelId: string | number | undefined;
+        let modificationId: string | number | undefined;
 
-        // Brand (optional)
-        if (source.brand) {
-          try {
-            const brands = await payload.find({
-              collection: 'brands',
-              where: { name: { equals: source.brand } },
-              limit: 1,
-              depth: 0,
-            })
-            if (brands.docs.length > 0) {
-              brandId = brands.docs[0].id
-            } else {
-              console.warn(`Brand "${source.brand}" not found. Creating it.`)
-              const newBrand = await payload.create({
-                collection: 'brands',
-                data: { name: source.brand, slug: slugify(source.brand) },
-              })
-              brandId = newBrand.id
-            }
-            productData.brand = brandId
-          } catch (error) {
-            console.warn(
-              `Error processing brand "${source.brand}" for product "${source.name}". Skipping field.`,
-              error,
-            )
-          }
-        }
-
-        // Model (optional)
+        // Model (Example: links first brand)
         if (source.model) {
-          try {
-            const models = await payload.find({
-              collection: 'models',
-              where: { name: { equals: source.model } },
-              limit: 1,
-              depth: 0,
-            })
-            if (models.docs.length > 0) {
-              modelId = models.docs[0].id
+            const parentBrandId = brandIds.length > 0 ? brandIds[0] : undefined;
+            modelId = await findOrCreateRelated(payload, 'models', source.model, parentBrandId ? { parentCollection: 'brand', parentId: parentBrandId } : undefined);
+        }
+
+        // Modification (only if model exists)
+        if (source.modification && modelId) {
+             modificationId = await findOrCreateRelated(payload, 'modifications', source.modification, { parentCollection: 'model', parentId: modelId });
+        }
+
+        // --- Assign Relationships to Product --- 
+        if (categoryId) productDataForDb.category = categoryId as any;
+        else {
+             throw new Error(`Required category '${source.category}' could not be resolved.`);
+        }
+        if (subcategoryId) productDataForDb.subcategory = subcategoryId as any;
+        if (thirdsubcategoryId) productDataForDb.thirdsubcategory = thirdsubcategoryId as any;
+        if (brandIds.length > 0) productDataForDb.brand = brandIds as any;
+        if (modelId) productDataForDb.model = modelId as any;
+        if (modificationId) productDataForDb.modification = modificationId as any;
+        
+        // --- Link Brand(s) to ThirdSubcategory (Re-applying automatic linking despite type errors) ---
+        if (thirdsubcategoryId && brandIds.length > 0) {
+          // ID is already guaranteed to be string | number here
+          const thirdSubIdToAdd = thirdsubcategoryId;
+
+          // Check if we have a valid ID to add before proceeding
+          if (thirdSubIdToAdd !== null && thirdSubIdToAdd !== undefined) {
+            for (const brandId of brandIds) {
+              try {
+                // 1. Fetch the current brand document WITH depth: 0
+                const brandToUpdate = await payload.findByID({
+                  collection: 'brands',
+                  id: brandId as any, // Using 'as any' due to persistent type errors
+                  depth: 0, // Ensure relationships are IDs
+                });
+
+                if (brandToUpdate) {
+                  // 2. Get the current list of linked IDs, ensuring they are primitives
+                  const currentLinkedIds: (string | number)[] = (brandToUpdate.thirdsubcategories || []).map(
+                    (link: string | number | { id: string | number }) => 
+                      typeof link === 'object' && link !== null ? link.id : link
+                  ).filter(id => id !== null && id !== undefined); // Filter out any potential null/undefined
+
+                  // 3. Check if the ID to add is already present (compare carefully)
+                  const alreadyLinked = currentLinkedIds.some(existingId => 
+                    String(existingId) === String(thirdSubIdToAdd) // Compare as strings
+                  );
+
+                  if (!alreadyLinked) {
+                    // 4. If not present, update the brand with the new ID added
+                    const newLinkedIds = [...currentLinkedIds, thirdSubIdToAdd];
+                    console.log(`Linking Brand ID ${brandId} to ThirdSubcategory ID ${thirdSubIdToAdd}. New links: ${newLinkedIds.join(', ')}`);
+                    await payload.update({
+                      collection: 'brands',
+                      id: brandId as any, // Using 'as any' due to persistent type errors
+                      data: {
+                        thirdsubcategories: newLinkedIds as any, // Cast to any to bypass overload error
+                      },
+                    });
+              }
             } else {
-              console.warn(`Model "${source.model}" not found. Creating it.`)
-              // Ensure brandId is potentially available if needed for the model
-              const modelData: Pick<Model, 'name' | 'slug'> & { brand?: string | number } = {
-                name: source.model,
-                slug: slugify(source.model),
+                   console.warn(`Could not find Brand ID ${brandId} to link ThirdSubcategory ${thirdSubIdToAdd}.`);
+                }
+              } catch (linkError) {
+                console.error(`Error linking Brand ID ${brandId} to ThirdSubcategory ID ${thirdSubIdToAdd}:`, linkError);
               }
-              if (brandId) {
-                // Assign the ID directly, ensuring it's string or number
-                modelData.brand = brandId as string | number
-              }
-              const newModel = await payload.create({
-                collection: 'models',
-                // @ts-expect-error - Suppress persistent type error for create data
-                data: modelData as Partial<Model>,
-              })
-              modelId = newModel.id
             }
-            productData.model = modelId
-          } catch (error) {
-            console.warn(
-              `Error processing model "${source.model}" for product "${source.name}". Skipping field.`,
-              error,
-            )
-          }
-        }
-
-        // Modification (optional)
-        if (source.modification) {
-          try {
-            const modifications = await payload.find({
-              collection: 'modifications',
-              where: { name: { equals: source.modification } },
-              limit: 1,
-              depth: 0,
-            })
-            if (modifications.docs.length > 0) {
-              productData.modification = modifications.docs[0].id
             } else {
-              console.warn(`Modification "${source.modification}" not found. Creating it.`)
-              // Ensure modelId is potentially available if needed
-              const modificationData: Pick<Modification, 'name' | 'slug'> & {
-                model?: string | number
-              } = {
-                name: source.modification,
-                slug: slugify(source.modification),
-              }
-              if (modelId) {
-                // Assign the ID directly, ensuring it's string or number
-                modificationData.model = modelId as string | number
-              }
-              const newModification = await payload.create({
-                collection: 'modifications',
-                // @ts-expect-error - Suppress persistent type error for create data
-                data: modificationData as Partial<Modification>,
-              })
-              productData.modification = newModification.id
-            }
-          } catch (error) {
-            console.warn(
-              `Error processing modification "${source.modification}" for product "${source.name}". Skipping field.`,
-              error,
-            )
+             console.warn(`Invalid ThirdSubcategory ID (${thirdSubIdToAdd}) provided for Brand linking.`);
           }
         }
 
-        // --- Handle Images ---
-        // Additional images (comma-separated)
-        if (source.images) {
-          const imageIdentifiers = source.images
-            .split(',')
-            .map((img) => img.trim())
-            .filter((img) => img)
-          const imageRelationArray: { image: string | number }[] = [] // Initialize correct structure
-          for (const identifier of imageIdentifiers) {
-            const foundId = await findMedia(identifier)
-            if (foundId) {
-              // Avoid duplicates - check if an object with this ID already exists
-              if (!imageRelationArray.some((item) => item.image === foundId)) {
-                // Cast foundId to string | number for the relation
-                imageRelationArray.push({ image: foundId as string | number })
-              }
-            }
-          }
-          if (imageRelationArray.length > 0) {
-            // Assert the type to match the expected Array Block structure for the operation
-            productData.images = imageRelationArray as NonNullable<Catalog['images']>
-          }
-        }
-
-        // --- Upsert Logic ---
-        // Check if product with the same slug already exists
-        const existingProducts = await payload.find({
+        // --- Upsert Product Logic --- 
+        const existingProduct = await payload.find({
           collection: 'catalog',
-          where: { slug: { equals: slug } },
+          where: { article: { equals: source.article } },
           limit: 1,
-          depth: 0, // Don't need related data here
+          depth: 0,
         })
 
-        // Clean data before sending (remove undefined array/object fields if necessary based on collection config)
-        const cleanData = (data: Partial<Omit<Catalog, 'id' | 'createdAt' | 'updatedAt'>>) => {
-          const cleaned: Partial<Omit<Catalog, 'id' | 'createdAt' | 'updatedAt'>> = { ...data }
-
-          // Handle potentially undefined nested structure
-          if (cleaned.marketplaceLinks) {
-            // Don't remove empty others array
-            if (cleaned.marketplaceLinks.others === undefined) {
-              cleaned.marketplaceLinks.others = []
-            }
-            // If marketplaceLinks only contains undefined values after cleaning, remove the parent object
-            if (Object.values(cleaned.marketplaceLinks).every((v) => v === undefined)) {
-              cleaned.marketplaceLinks = undefined
-            }
-          } else {
-            cleaned.marketplaceLinks = undefined
-          }
-
-          if (
-            cleaned.distributors === undefined ||
-            (Array.isArray(cleaned.distributors) && cleaned.distributors.length === 0)
-          ) {
-            cleaned.distributors = undefined
-          }
-          if (
-            cleaned.specifications === undefined ||
-            (Array.isArray(cleaned.specifications) && cleaned.specifications.length === 0)
-          ) {
-            cleaned.specifications = undefined
-          }
-          if (
-            cleaned.images === undefined ||
-            (Array.isArray(cleaned.images) && cleaned.images.length === 0)
-          ) {
-            cleaned.images = undefined
-          }
-
-          // Remove top-level undefined keys to avoid sending them in the API call
-          Object.keys(cleaned).forEach((key) => {
-            if (cleaned[key as keyof typeof cleaned] === undefined) {
-              delete cleaned[key as keyof typeof cleaned]
-            }
-          })
-
-          return cleaned
-        }
-
-        if (existingProducts.docs.length > 0) {
-          const existingId = existingProducts.docs[0].id
-          console.log(`Updating existing product: ${source.name} (ID: ${existingId})`)
-          const updateData = cleanData(productData)
-
+        if (existingProduct.docs.length > 0) {
+          const productId = existingProduct.docs[0].id
+          console.log(`Updating product with Article ${source.article} (ID: ${productId})`)
           await payload.update({
             collection: 'catalog',
-            id: existingId,
-            data: updateData, // Pass the cleaned, structured data
+            id: productId,
+            data: productDataForDb, // Pass the partially constructed data
           })
         } else {
-          console.log(`Creating new product: ${source.name}`)
-          const createData = cleanData(productData)
-
-          // Assert the data type for create, ensuring required fields are present
+          console.log(`Creating new product with Article ${source.article}`)
+          // Ensure required fields are set before creating
           await payload.create({
             collection: 'catalog',
-            data: createData as Pick<Catalog, 'name' | 'slug' | 'category' | 'article'> & typeof createData,
+            data: productDataForDb as Catalog, // Assert type for create
           })
         }
 
         successCount++
-      } catch (error: any) {
-        // Catch specific Payload validation errors
-        if (error.name === 'ValidationError' && error.data?.fieldErrors) {
-          console.error(`Validation error processing product "${source.name}":`)
-          // Log specific field errors
-          error.data.fieldErrors.forEach((fieldError: { field: string; message: string }) => {
-            console.error(`  - Field: '${fieldError.field}', Message: ${fieldError.message}`)
-          })
-          // Log the data that caused the error
-          console.error('Data causing validation error:', JSON.stringify(productData, null, 2))
-        } else {
-          // Log other unexpected errors
-          console.error(`Unexpected error processing product "${source.name}":`, error)
-          // Log the data that might have caused the error
-          console.error('Data at time of error:', JSON.stringify(productData, null, 2))
-        }
+      } catch (productError) {
+        console.error(`Failed to process row ${currentRowIndex + 1} (Article: ${source?.article || '(No Article)'})`, productError)
+        console.error('Errored Row Data:', source)
         skipCount++
       }
     }
 
-    console.log('\nImport complete!')
-    console.log(`Successfully imported/updated: ${successCount}`)
-    console.log(`Skipped/failed: ${skipCount}`)
+    console.log(`Import finished. Success: ${successCount}, Skipped/Failed: ${skipCount}`)
 
-    return { success: successCount, failed: skipCount }
   } catch (error) {
-    console.error('Fatal error during import process:', error)
-    // Calculate failed count more accurately in case of early exit
-    const totalProducts = productsData?.length || 0
-    const processed = successCount + skipCount
-    const remainingFailed = totalProducts > processed ? totalProducts - processed : 0
-    return { success: successCount, failed: skipCount + remainingFailed }
+    console.error(`An unexpected error occurred during the CSV import process (around row ${currentRowIndex + 1}):`, error)
+    if (productsData && currentRowIndex >= 0 && currentRowIndex < productsData.length) {
+      console.error('Data being processed during error:', productsData[currentRowIndex])
+    }
+    return { success: successCount, failed: (productsData?.length || 0) - successCount }
   }
+
+  return { success: successCount, failed: skipCount }
 }

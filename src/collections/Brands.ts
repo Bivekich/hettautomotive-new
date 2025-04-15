@@ -38,6 +38,16 @@ const Brands: CollectionConfig = {
       },
     },
     {
+      name: 'thirdsubcategories',
+      type: 'relationship',
+      relationTo: 'thirdsubcategories',
+      hasMany: true,
+      admin: {
+        position: 'sidebar',
+        description: 'Link this brand to the relevant third-level subcategories it applies to.',
+      },
+    },
+    {
       name: 'featured',
       type: 'checkbox',
       defaultValue: false,

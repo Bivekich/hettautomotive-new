@@ -19,14 +19,12 @@ export const About: CollectionConfig = {
     {
       name: 'mainContent',
       type: 'richText',
-      required: true,
       label: 'Main Content',
     },
     {
       name: 'features',
       type: 'array',
       label: 'Features',
-      required: true,
       fields: [
         {
           name: 'title',
@@ -37,7 +35,6 @@ export const About: CollectionConfig = {
         {
           name: 'description',
           type: 'text',
-          required: true,
           label: 'Feature Description',
         },
         {
@@ -62,16 +59,12 @@ export const About: CollectionConfig = {
         {
           name: 'description',
           type: 'richText',
-          required: true,
           label: 'Section Description',
         },
         {
           name: 'images',
           type: 'array',
           label: 'Production Images',
-          required: true,
-          minRows: 1,
-          maxRows: 8,
           fields: [
             {
               name: 'image',
@@ -103,7 +96,6 @@ export const About: CollectionConfig = {
         {
           name: 'description',
           type: 'richText',
-          required: true,
           label: 'Section Description',
         },
         {

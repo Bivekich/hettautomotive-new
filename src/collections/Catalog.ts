@@ -37,6 +37,14 @@ const Catalog: CollectionConfig = {
     useAsTitle: 'name',
     defaultColumns: ['name', 'category', 'updatedAt'],
     group: 'Content',
+    listSearchableFields: [
+      'name',
+      'oem',
+      'article',
+      'category.name',
+      'subcategory.name',
+      'thirdsubcategory.name'
+    ],
   },
   access: {
     read: () => true,
@@ -81,7 +89,7 @@ const Catalog: CollectionConfig = {
       name: 'brand',
       type: 'relationship',
       relationTo: 'brands',
-      hasMany: false,
+      hasMany: true,
       admin: {
         position: 'sidebar',
       },

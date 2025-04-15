@@ -104,6 +104,15 @@ export async function GET() {
         return current === undefined || current === null ? defaultValue : current
       }
 
+      // Helper to format an array of related objects (like brands) by name
+      const formatRelatedArrayNames = (items: unknown[] | null | undefined): string => {
+        if (!Array.isArray(items) || items.length === 0) return ''
+        return items
+          .map((item) => getProp(item, 'name')) // Assumes the related object has a 'name' field
+          .filter(name => name) // Remove empty names
+          .join('|') // Join names with a pipe separator
+      }
+
       // Helper to get filename or alt from Media object/ID
       const getImageIdentifier = (media: unknown): string => {
         if (!media) return ''
@@ -183,7 +192,7 @@ export async function GET() {
       row.push(csvStringify(item.inStock))
       row.push(csvStringify(getProp(item.subcategory, 'name')))
       row.push(csvStringify(getProp(item.thirdsubcategory, 'name'))) // Added third subcategory
-      row.push(csvStringify(getProp(item.brand, 'name')))
+      row.push(csvStringify(formatRelatedArrayNames(item.brand))) // Use helper for brands
       row.push(csvStringify(getProp(item.model, 'name')))
       row.push(csvStringify(getProp(item.modification, 'name')))
 

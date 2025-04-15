@@ -24,6 +24,8 @@ import ThirdSubcategories from './collections/ThirdSubcategories'
 import Brands from './collections/Brands'
 import Models from './collections/Models'
 import Modifications from './collections/Modifications'
+import EmailMetrics from './collections/EmailMetrics'
+import { contactFormEndpoint, vinRequestEndpoint } from './endpoints/email'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -57,7 +59,8 @@ export default buildConfig({
     Brands,
     Models,
     Modifications,
-    Catalog
+    Catalog,
+    EmailMetrics
   ],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
@@ -74,5 +77,9 @@ export default buildConfig({
   plugins: [
     payloadCloudPlugin(),
     // storage-adapter-placeholder
+  ],
+  endpoints: [
+    contactFormEndpoint,
+    vinRequestEndpoint,
   ],
 })

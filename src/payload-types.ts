@@ -84,6 +84,7 @@ export interface Config {
     models: Model;
     modifications: Modification;
     catalog: Catalog;
+    'email-metrics': EmailMetric;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
     'payload-migrations': PayloadMigration;
@@ -107,6 +108,7 @@ export interface Config {
     models: ModelsSelect<false> | ModelsSelect<true>;
     modifications: ModificationsSelect<false> | ModificationsSelect<true>;
     catalog: CatalogSelect<false> | CatalogSelect<true>;
+    'email-metrics': EmailMetricsSelect<false> | EmailMetricsSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
@@ -204,7 +206,7 @@ export interface Banner {
 export interface About {
   id: number;
   title: string;
-  mainContent: {
+  mainContent?: {
     root: {
       type: string;
       children: {
@@ -218,16 +220,18 @@ export interface About {
       version: number;
     };
     [k: string]: unknown;
-  };
-  features: {
-    title: string;
-    description: string;
-    icon?: (number | null) | Media;
-    id?: string | null;
-  }[];
+  } | null;
+  features?:
+    | {
+        title: string;
+        description?: string | null;
+        icon?: (number | null) | Media;
+        id?: string | null;
+      }[]
+    | null;
   productionSection: {
     title: string;
-    description: {
+    description?: {
       root: {
         type: string;
         children: {
@@ -241,16 +245,18 @@ export interface About {
         version: number;
       };
       [k: string]: unknown;
-    };
-    images: {
-      image: number | Media;
-      alt?: string | null;
-      id?: string | null;
-    }[];
+    } | null;
+    images?:
+      | {
+          image: number | Media;
+          alt?: string | null;
+          id?: string | null;
+        }[]
+      | null;
   };
   buySection: {
     title: string;
-    description: {
+    description?: {
       root: {
         type: string;
         children: {
@@ -264,7 +270,7 @@ export interface About {
         version: number;
       };
       [k: string]: unknown;
-    };
+    } | null;
     onlineTitle?: string | null;
     distributor?: {
       title?: string | null;
@@ -891,6 +897,10 @@ export interface Brand {
    */
   logo?: (number | null) | Media;
   /**
+   * Link this brand to the relevant third-level subcategories it applies to.
+   */
+  thirdsubcategories?: (number | Thirdsubcategory)[] | null;
+  /**
    * Show this brand in featured sections
    */
   featured?: boolean | null;
@@ -1002,7 +1012,7 @@ export interface Catalog {
     [k: string]: unknown;
   } | null;
   shortDescription?: string | null;
-  brand?: (number | null) | Brand;
+  brand?: (number | Brand)[] | null;
   model?: (number | null) | Model;
   modification?: (number | null) | Modification;
   category: number | Category;
@@ -1051,6 +1061,26 @@ export interface Catalog {
     | null;
   metaTitle?: string | null;
   metaDescription?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Track metrics for different types of emails sent
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "email-metrics".
+ */
+export interface EmailMetric {
+  id: number;
+  type: 'contact_form' | 'vin_request';
+  /**
+   * Number of emails sent for this type
+   */
+  count: number;
+  /**
+   * Last time an email of this type was sent
+   */
+  lastSentAt?: string | null;
   updatedAt: string;
   createdAt: string;
 }
@@ -1128,6 +1158,10 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'catalog';
         value: number | Catalog;
+      } | null)
+    | ({
+        relationTo: 'email-metrics';
+        value: number | EmailMetric;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -1583,6 +1617,7 @@ export interface BrandsSelect<T extends boolean = true> {
   slug?: T;
   description?: T;
   logo?: T;
+  thirdsubcategories?: T;
   featured?: T;
   metaTitle?: T;
   metaDescription?: T;
@@ -1686,6 +1721,17 @@ export interface CatalogSelect<T extends boolean = true> {
       };
   metaTitle?: T;
   metaDescription?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "email-metrics_select".
+ */
+export interface EmailMetricsSelect<T extends boolean = true> {
+  type?: T;
+  count?: T;
+  lastSentAt?: T;
   updatedAt?: T;
   createdAt?: T;
 }
