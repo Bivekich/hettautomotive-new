@@ -1020,7 +1020,7 @@ export interface Catalog {
   thirdsubcategory?: (number | null) | Thirdsubcategory;
   images?:
     | {
-        image: number | Media;
+        image?: (number | null) | Media;
         alt?: string | null;
         id?: string | null;
       }[]
