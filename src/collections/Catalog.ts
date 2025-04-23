@@ -1,4 +1,5 @@
 import { CollectionConfig } from 'payload'
+import type { Where } from 'payload'
 
 // Add slugify function with Cyrillic support
 const slugify = (text: string): string => {
@@ -87,6 +88,42 @@ const slugify = (text: string): string => {
     .replace(/-+$/, '') // Trim - from end of text
 }
 
+// Helper function to recursively modify the where clause for ILIKE
+const transformLikeToILike = (where: Where | undefined): Where | undefined => {
+  if (!where) {
+    return where
+  }
+
+  // Handle OR and AND arrays
+  if (where.or) {
+    where.or = where.or.map(transformLikeToILike) as Where[]
+  }
+  if (where.and) {
+    where.and = where.and.map(transformLikeToILike) as Where[]
+  }
+
+  // Process individual field conditions
+  for (const field in where) {
+    if (field !== 'or' && field !== 'and') {
+      const condition = where[field]
+      // Use 'any' to access potential 'like' property
+      const conditionAsAny = condition as any;
+      // Check specifically for the 'like' operator
+      if (typeof conditionAsAny === 'object' && conditionAsAny !== null && 'like' in conditionAsAny && typeof conditionAsAny.like === 'string') {
+        const likeValue = conditionAsAny.like;
+        // Replace 'like' with case-insensitive 'ilike' for PostgreSQL
+        delete conditionAsAny.like // Remove the original 'like' key
+        conditionAsAny.ilike = likeValue // Add the 'ilike' key
+        console.log(`Rewriting query for ${field} to use ILIKE:`, conditionAsAny) // Log the change
+      }
+      // Assign the potentially modified condition back (important!)
+      where[field] = conditionAsAny;
+    }
+  }
+
+  return where
+}
+
 const Catalog: CollectionConfig = {
   slug: 'catalog',
   admin: {
@@ -112,6 +149,18 @@ const Catalog: CollectionConfig = {
           data.slug = slugify(data.name)
         }
         return data
+      },
+    ],
+    beforeRead: [
+      async ({ req }) => {
+        const where = (req.query?.where as any) as Where | undefined
+        // console.log('Original where clause:', JSON.stringify(where, null, 2))
+
+        if (where) {
+          const modifiedWhere = transformLikeToILike(where)
+          // console.log('Modified where clause:', JSON.stringify(modifiedWhere, null, 2))
+          ;(req.query as any).where = modifiedWhere
+        }
       },
     ],
   },
