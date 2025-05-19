@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: hett-cms:${TAG:-latest}
+    container_name: hett-cms
+    restart: unless-stopped
+    ports:
+      - "3007:3000"
+    env_file:
+      - stack.env
+    volumes:
+      - ./public:/app/public
+      - ./media:/app/media
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DATABASE_URI=${DATABASE_URI}
+      - PAYLOAD_SECRET=${PAYLOAD_SECRET}
+      - PAYLOAD_PUBLIC_SERVER_URL=${PAYLOAD_PUBLIC_SERVER_URL}
+      - NEXT_PUBLIC_SERVER_URL=${NEXT_PUBLIC_SERVER_URL}
+      - NEXT_PUBLIC_EMAIL_HOST=${NEXT_PUBLIC_EMAIL_HOST}
+      - NEXT_PUBLIC_EMAIL_PORT=${NEXT_PUBLIC_EMAIL_PORT}
+      - NEXT_PUBLIC_EMAIL_USER=${NEXT_PUBLIC_EMAIL_USER}
+      - NEXT_PUBLIC_EMAIL_PASS=${NEXT_PUBLIC_EMAIL_PASS}
+      - NEXT_PUBLIC_EMAIL_FROM=${NEXT_PUBLIC_EMAIL_FROM}
+      - NEXT_PUBLIC_EMAIL_TO=${NEXT_PUBLIC_EMAIL_TO}
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge 
