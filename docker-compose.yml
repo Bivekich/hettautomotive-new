@@ -12,9 +12,6 @@ services:
       - "3007:3000"
     env_file:
       - stack.env
-    volumes:
-      - ./public:/app/public
-      - ./media:/app/media
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - DATABASE_URI=${DATABASE_URI}
@@ -27,8 +24,24 @@ services:
       - NEXT_PUBLIC_EMAIL_PASS=${NEXT_PUBLIC_EMAIL_PASS}
       - NEXT_PUBLIC_EMAIL_FROM=${NEXT_PUBLIC_EMAIL_FROM}
       - NEXT_PUBLIC_EMAIL_TO=${NEXT_PUBLIC_EMAIL_TO}
+    volumes:
+      - ./public:/app/public
+      - hett_media_data:/app/media
+      - hett_uploads_data:/app/.next/server/chunks/uploads
     networks:
       - app-network
+    labels:
+      - "com.docker.stack.namespace=hett"
+      - "com.hett.service.name=cms"
+      - "com.hett.service.description=Hett CMS Backend"
+
+volumes:
+  hett_media_data:
+    name: hett_media_data
+    external: false
+  hett_uploads_data:
+    name: hett_uploads_data
+    external: false
 
 networks:
   app-network:

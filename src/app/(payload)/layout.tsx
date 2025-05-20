@@ -9,6 +9,18 @@ import React from 'react'
 import { importMap } from './admin/importMap.js'
 import './custom.scss'
 
+// Добавляем метаданные для предотвращения индексации
+export const metadata = {
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
+}
+
 type Args = {
   children: React.ReactNode
 }
@@ -24,6 +36,11 @@ const serverFunction: ServerFunctionClient = async function (args) {
 
 const Layout = ({ children }: Args) => (
   <RootLayout config={config} importMap={importMap} serverFunction={serverFunction}>
+    {/* Добавляем метатеги напрямую, т.к. это может быть перезаписано */}
+    <head>
+      <meta name="robots" content="noindex, nofollow" />
+      <meta name="googlebot" content="noindex, nofollow" />
+    </head>
     {children}
   </RootLayout>
 )
